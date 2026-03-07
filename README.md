@@ -95,3 +95,237 @@ If you do not yet have API credentials, register an application on the Cisco Dev
 Python 3.10+ recommended.
 
 Required Python packages:
+
+requests  
+pyyaml  
+
+Install them with:
+
+pip install requests pyyaml
+
+---
+
+# Secure Setup (Environment Variables)
+
+API credentials should never be stored in source code.
+
+Set them as environment variables instead.
+
+## macOS / Linux
+
+Add to your shell profile (~/.zshrc, ~/.bashrc, etc.):
+
+export OPENVULN_CLIENT_ID="your_client_id"  
+export OPENVULN_CLIENT_SECRET="your_client_secret"
+
+Reload your shell:
+
+source ~/.zshrc
+
+or
+
+source ~/.bashrc
+
+---
+
+## Windows PowerShell (temporary)
+
+$env:OPENVULN_CLIENT_ID="your_client_id"  
+$env:OPENVULN_CLIENT_SECRET="your_client_secret"
+
+---
+
+## Windows PowerShell (persistent)
+
+[System.Environment]::SetEnvironmentVariable("OPENVULN_CLIENT_ID","your_client_id","User")  
+[System.Environment]::SetEnvironmentVariable("OPENVULN_CLIENT_SECRET","your_client_secret","User")
+
+Restart PowerShell after setting persistent variables.
+
+---
+
+# Configuration
+
+Product matching rules are defined in:
+
+config/product_groups.yaml
+
+Example structure:
+
+groups:
+  netsec:
+    description: Network Security Products
+    products:
+      FTD:
+        match:
+          - "Firewall Threat Defense"
+        exclude: []
+
+      ASA:
+        match:
+          - "Adaptive Security Appliance"
+        exclude: []
+
+This allows the tool to convert raw Cisco product names into cleaner friendly names used in reports.
+
+---
+
+# Usage
+
+Run the reporter:
+
+python src/psirt_reporter.py
+
+Default behavior:
+
+- pulls advisories from the last **60 days**
+- includes **all configured product groups**
+
+---
+
+# Command Line Options
+
+## Filter by Product Group
+
+python src/psirt_reporter.py --group netsec
+
+Multiple groups:
+
+python src/psirt_reporter.py --group netsec switching
+
+Include all groups:
+
+python src/psirt_reporter.py --group all
+
+---
+
+## Query Last N Days
+
+python src/psirt_reporter.py --days 30
+
+---
+
+## Query Specific Date Range
+
+python src/psirt_reporter.py --start-date 2026-01-01 --end-date 2026-03-01
+
+---
+
+# Output
+
+All generated files are written to:
+
+output/
+
+Example CSV file:
+
+output/psirt_netsec_2026-01-01_to_2026-03-01.csv
+
+---
+
+# CSV Output Fields
+
+| Column | Description |
+|------|-------------|
+| matched_groups | Product groups matched from configuration |
+| friendly_products | Friendly product names |
+| kev | Placeholder for Known Exploited Vulnerabilities flag |
+| firstPublished | Advisory publication date |
+| lastUpdated | Advisory last update date |
+| status | Cisco advisory status |
+| advisoryId | Cisco advisory identifier |
+| sir | Cisco severity rating |
+| cvssBaseScore | CVSS base score |
+| cves | Associated CVE identifiers |
+| advisoryTitle | Advisory title |
+| productNames | Raw Cisco product names |
+| publicationUrl | Cisco advisory link |
+| cwe | Weakness classification |
+
+---
+
+# Product Name Discovery
+
+The script also produces:
+
+output/unique_product_names.txt
+
+This file lists every unique product name returned by the Cisco API.
+
+It helps improve product matching rules in `product_groups.yaml`.
+
+---
+
+# Project Structure
+
+repo/
+│
+├── config/
+│   └── product_groups.yaml
+│
+├── src/
+│   └── psirt_reporter.py
+│
+├── output/
+│   └── generated reports
+│
+├── README.md
+└── LICENSE
+
+---
+
+# Troubleshooting
+
+## Missing API Credentials
+
+Ensure the following environment variables are set in the same shell where you run the script:
+
+OPENVULN_CLIENT_ID  
+OPENVULN_CLIENT_SECRET
+
+---
+
+## Authentication Errors (401 / 403)
+
+Verify:
+
+- your API key and secret are correct
+- your Cisco developer app has OpenVuln API access
+
+---
+
+## No Advisories Returned
+
+Possible reasons:
+
+- No advisories were published in the selected date range
+- Product filtering excluded all results
+
+---
+
+## Network / Proxy Issues
+
+Ensure outbound access to:
+
+id.cisco.com  
+apix.cisco.com
+
+---
+
+# Roadmap
+
+Planned improvements include:
+
+- CISA Known Exploited Vulnerabilities (KEV) integration
+- KEV filtering
+- severity filtering
+- HTML reporting
+- scheduled reporting automation
+- GitHub CI workflows
+
+---
+
+# License
+
+This project is licensed under the MIT License.  
+See the LICENSE file for details.
