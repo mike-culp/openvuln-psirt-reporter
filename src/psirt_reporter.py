@@ -78,7 +78,17 @@ def parse_arguments(product_groups):
         default=60,
         help="Number of days back to pull advisories (default: 60)",
     )
+    parser.add_argument(
+        "--start-date",
+        type=str,
+        help="Start date in YYYY-MM-DD format",
+    )
 
+    parser.add_argument(
+        "--end-date",
+        type=str,
+        help="End date in YYYY-MM-DD format",
+    )
     return parser.parse_args()
 
 
@@ -175,9 +185,9 @@ def filter_advisories_by_group(classified_advisories, selected_groups):
     return filtered
 
 
-def fetch_all_advisories(days_back=365):
+def fetch_all_advisories(start_date, end_date):
     """
-    Fetch all advisories updated within the past `days_back` days.
+    Fetch all advisories updated within the requested date range.
 
     Returns:
         list[dict]: A list of advisory records returned by the API.
@@ -189,12 +199,9 @@ def fetch_all_advisories(days_back=365):
         "Accept": "application/json",
     }
 
-    today = datetime.utcnow().date()
-    start_date = today - timedelta(days=days_back)
-
     query_params = {
         "startDate": start_date.isoformat(),
-        "endDate": today.isoformat(),
+        "endDate": end_date.isoformat(),
         "pageIndex": 1,
         "pageSize": 100,
         "productNames": "true",
@@ -304,21 +311,53 @@ def write_unique_product_names(product_names):
     print(f"Unique product names written to: {output_file}")
 
 
+def resolve_date_range(args):
+    """
+    Determine the date range to use for the advisory query.
+
+    Rules:
+    - If start_date and end_date are provided, use them
+    - If only one is provided, raise an error
+    - Otherwise use args.days
+    """
+
+    today = datetime.utcnow().date()
+
+    if args.start_date and args.end_date:
+        start_date = datetime.strptime(args.start_date, "%Y-%m-%d").date()
+        end_date = datetime.strptime(args.end_date, "%Y-%m-%d").date()
+        return start_date, end_date
+
+    if args.start_date or args.end_date:
+        raise ValueError("Both --start-date and --end-date must be provided together")
+
+    start_date = today - timedelta(days=args.days)
+    end_date = today
+
+    return start_date, end_date
+
+
 def main():
     product_groups = load_product_groups()
     args = parse_arguments(product_groups)
-
+    start_date, end_date = resolve_date_range(args)
     print()
     print("PSIRT Reporter")
     print("--------------")
     print(f"Groups: {args.group}")
-    print(f"Days: {args.days}")
-    print()
 
-    advisories = fetch_all_advisories(days_back=args.days)
+    if args.start_date and args.end_date:
+        print(f"Start date: {start_date}")
+        print(f"End date: {end_date}")
+    else:
+        print(f"Days: {args.days}")
+        print(f"Start date: {start_date}")
+        print(f"End date: {end_date}")
+        print()
+
+    print()
+    advisories = fetch_all_advisories(start_date, end_date)
     print_advisory_summary(advisories)
-
-    print()
     print("Loaded product groups:")
     print(list(product_groups.keys()))
 
