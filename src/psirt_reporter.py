@@ -149,6 +149,32 @@ def classify_all_advisories(advisories, product_groups):
     return classified_advisories
 
 
+def filter_advisories_by_group(classified_advisories, selected_groups):
+    """
+    Filter advisories by selected product groups.
+
+    Args:
+        classified_advisories: list of advisories with matched_groups
+        selected_groups: list of groups from CLI
+
+    Returns:
+        list of advisories that match the selected groups
+    """
+
+    if "all" in selected_groups:
+        return classified_advisories
+
+    filtered = []
+
+    for advisory in classified_advisories:
+        matched_groups = advisory.get("matched_groups", [])
+
+        if any(group in matched_groups for group in selected_groups):
+            filtered.append(advisory)
+
+    return filtered
+
+
 def fetch_all_advisories(days_back=365):
     """
     Fetch all advisories updated within the past `days_back` days.
@@ -313,15 +339,18 @@ def main():
 
     classified_advisories = classify_all_advisories(advisories, product_groups)
 
+    filtered_advisories = filter_advisories_by_group(
+    classified_advisories,
+    args.group,
+)
+
     print()
-    print(f"Classified advisories: {len(classified_advisories)}")
+    print(f"Filtered advisories: {len(filtered_advisories)}")
 
-    if classified_advisories:
-        print("Matched groups for first classified advisory:")
-        print(classified_advisories[0].get("matched_groups", []))
-
-    unique_product_names = extract_unique_product_names(advisories)
-
+    if filtered_advisories:
+        print("Matched groups for first filtered advisory:")
+        print(filtered_advisories[0].get("matched_groups", []))
+        unique_product_names = extract_unique_product_names(filtered_advisories)
     print()
     print(f"Total unique product names discovered: {len(unique_product_names)}")
     print("Showing the first 50 unique product names alphabetically:")
