@@ -1,0 +1,74 @@
+groups:
+  netsec:
+    display_name: NetSec
+    match:
+      - "Firepower"
+      - "FTD"
+      - "FMC"
+      - "FXOS"
+      - "ASA"
+      - "Secure Firewall"
+    exclude: []
+
+  enterprise:
+    display_name: Enterprise Networking
+    match:
+      - "Catalyst"
+      - "IOS"
+      - "IOS XE"
+      - "DNA"
+      - "ISE"
+    exclude: []
+
+  datacenter:
+    display_name: Data Center Networking
+    match:
+      - "Nexus"
+      - "NX-OS"
+      - "ACI"
+      - "APIC"
+    exclude: []
+
+  compute:
+    display_name: Compute
+    match:
+      - "UCS"
+      - "UCS Manager"
+      - "UCS Central"
+      - "Intersight"
+    exclude: []
+
+  wireless:
+    display_name: Wireless
+    match:
+      - "Wireless"
+      - "Catalyst 9800"
+      - "Access Point"
+      - "WLC"
+    exclude: []
+
+  collab:
+    display_name: Collaboration
+    match:
+      - "Unified Communications"
+      - "CUCM"
+      - "Unity"
+      - "Expressway"
+      - "TelePresence"
+    exclude: []
+
+  cloud:
+    display_name: Cloud
+    match:
+      - "Meraki"
+      - "Umbrella"
+      - "Secure Access"
+    exclude: []
+
+  ai:
+    display_name: AI
+    match:
+      - "AI"
+      - "AI Defense"
+      - "Secure AI"
+    exclude: []
