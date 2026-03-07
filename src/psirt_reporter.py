@@ -1,11 +1,11 @@
+import argparse
+import csv
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
+
 import requests
 import yaml
-import argparse
-import csv
-
 
 
 TOKEN_URL = "https://id.cisco.com/oauth2/default/v1/token"
@@ -54,13 +54,12 @@ def load_product_groups():
 
 def parse_arguments(product_groups):
     """Parse command line arguments."""
-
     group_names = list(product_groups.keys())
 
     group_help_text = (
         "Product groups to include.\n\n"
         "Available groups:\n"
-        + "\n".join(f"  {g}" for g in group_names)
+        + "\n".join(f"  {group_name}" for group_name in group_names)
         + "\n\nUse 'all' to include everything (default)."
     )
 
@@ -81,6 +80,7 @@ def parse_arguments(product_groups):
         default=60,
         help="Number of days back to pull advisories (default: 60)",
     )
+
     parser.add_argument(
         "--start-date",
         type=str,
@@ -92,7 +92,33 @@ def parse_arguments(product_groups):
         type=str,
         help="End date in YYYY-MM-DD format",
     )
+
     return parser.parse_args()
+
+
+def resolve_date_range(args):
+    """
+    Determine the date range to use for the advisory query.
+
+    Rules:
+    - If start_date and end_date are provided, use them
+    - If only one is provided, raise an error
+    - Otherwise use args.days
+    """
+    today = datetime.utcnow().date()
+
+    if args.start_date and args.end_date:
+        start_date = datetime.strptime(args.start_date, "%Y-%m-%d").date()
+        end_date = datetime.strptime(args.end_date, "%Y-%m-%d").date()
+        return start_date, end_date
+
+    if args.start_date or args.end_date:
+        raise ValueError("Both --start-date and --end-date must be provided together")
+
+    start_date = today - timedelta(days=args.days)
+    end_date = today
+
+    return start_date, end_date
 
 
 def classify_advisory_products(product_names, product_groups):
@@ -169,11 +195,11 @@ def classify_all_advisories(advisories, product_groups):
         product_names = advisory.get("productNames", [])
         classification = classify_advisory_products(product_names, product_groups)
 
-        advisory_with_groups = advisory.copy()
-        advisory_with_groups["matched_groups"] = classification["matched_groups"]
-        advisory_with_groups["friendly_products"] = classification["friendly_products"]
+        advisory_with_classification = advisory.copy()
+        advisory_with_classification["matched_groups"] = classification["matched_groups"]
+        advisory_with_classification["friendly_products"] = classification["friendly_products"]
 
-        classified_advisories.append(advisory_with_groups)
+        classified_advisories.append(advisory_with_classification)
 
     return classified_advisories
 
@@ -189,19 +215,21 @@ def filter_advisories_by_group(classified_advisories, selected_groups):
     Returns:
         list of advisories that match the selected groups
     """
+    selected_group_set = {group.lower() for group in selected_groups}
 
-    if "all" in selected_groups:
+    if "all" in selected_group_set:
         return classified_advisories
 
-    filtered = []
+    filtered_advisories = []
 
     for advisory in classified_advisories:
         matched_groups = advisory.get("matched_groups", [])
+        matched_group_set = {group.lower() for group in matched_groups}
 
-        if any(group in matched_groups for group in selected_groups):
-            filtered.append(advisory)
+        if matched_group_set.intersection(selected_group_set):
+            filtered_advisories.append(advisory)
 
-    return filtered
+    return filtered_advisories
 
 
 def fetch_all_advisories(start_date, end_date):
@@ -265,9 +293,9 @@ def fetch_all_advisories(start_date, end_date):
     return all_advisories
 
 
-def extract_unique_product_names(advisories):
+def extract_unique_raw_product_names(advisories):
     """
-    Extract a sorted list of unique product names from advisory data.
+    Extract a sorted list of unique raw product names from advisory data.
     Handles both string and list formats returned by the API.
     """
     unique_product_names = set()
@@ -293,9 +321,26 @@ def extract_unique_product_names(advisories):
     return sorted(unique_product_names)
 
 
+def print_runtime_settings(args, start_date, end_date):
+    """Print the current runtime settings."""
+    print()
+    print("PSIRT Reporter")
+    print("--------------")
+    print(f"Groups: {args.group}")
+
+    if args.start_date and args.end_date:
+        print(f"Start date: {start_date}")
+        print(f"End date: {end_date}")
+    else:
+        print(f"Days: {args.days}")
+        print(f"Start date: {start_date}")
+        print(f"End date: {end_date}")
+
+    print()
+
+
 def print_advisory_summary(advisories):
     """Print a small summary of the advisory pull."""
-    print()
     print(f"Total advisories returned: {len(advisories)}")
 
     if not advisories:
@@ -306,6 +351,50 @@ def print_advisory_summary(advisories):
     print(f"First advisory ID: {first_advisory.get('advisoryId')}")
     print(f"First advisory title: {first_advisory.get('advisoryTitle')}")
     print(f"First advisory keys: {list(first_advisory.keys())}")
+
+
+def print_loaded_product_groups(product_groups):
+    """Print loaded product group names."""
+    print("Loaded product groups:")
+    print(list(product_groups.keys()))
+
+
+def print_sample_classification(advisories, product_groups):
+    """Print sample classification details for the first advisory."""
+    if not advisories:
+        return
+
+    print()
+    print("First advisory product names:")
+    for product_name in advisories[0].get("productNames", []):
+        print(product_name)
+
+    sample_classification = classify_advisory_products(
+        advisories[0].get("productNames", []),
+        product_groups,
+    )
+
+    print()
+    print("Sample advisory group matches:")
+    print(sample_classification["matched_groups"])
+
+    print("Sample friendly product matches:")
+    print(sample_classification["friendly_products"])
+
+
+def print_filtered_summary(filtered_advisories):
+    """Print summary information for filtered advisories."""
+    print()
+    print(f"Filtered advisories: {len(filtered_advisories)}")
+
+    if not filtered_advisories:
+        return
+
+    print("Matched groups for first filtered advisory:")
+    print(filtered_advisories[0].get("matched_groups", []))
+
+    print("Friendly products for first filtered advisory:")
+    print(filtered_advisories[0].get("friendly_products", []))
 
 
 def print_unique_product_names(product_names):
@@ -320,7 +409,8 @@ def print_unique_product_names(product_names):
 
 def write_unique_product_names(product_names):
     """Write unique product names to a text file for review."""
-    output_file = "unique_product_names.txt"
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    output_file = OUTPUT_DIR / "unique_product_names.txt"
 
     with open(output_file, "w", encoding="utf-8") as file_handle:
         for product_name in product_names:
@@ -328,32 +418,6 @@ def write_unique_product_names(product_names):
 
     print()
     print(f"Unique product names written to: {output_file}")
-
-
-def resolve_date_range(args):
-    """
-    Determine the date range to use for the advisory query.
-
-    Rules:
-    - If start_date and end_date are provided, use them
-    - If only one is provided, raise an error
-    - Otherwise use args.days
-    """
-
-    today = datetime.utcnow().date()
-
-    if args.start_date and args.end_date:
-        start_date = datetime.strptime(args.start_date, "%Y-%m-%d").date()
-        end_date = datetime.strptime(args.end_date, "%Y-%m-%d").date()
-        return start_date, end_date
-
-    if args.start_date or args.end_date:
-        raise ValueError("Both --start-date and --end-date must be provided together")
-
-    start_date = today - timedelta(days=args.days)
-    end_date = today
-
-    return start_date, end_date
 
 
 def write_advisories_to_csv(advisories, selected_groups, start_date, end_date):
@@ -415,6 +479,18 @@ def write_advisories_to_csv(advisories, selected_groups, start_date, end_date):
             friendly_products = advisory.get("friendly_products", [])
             friendly_products_value = ", ".join(friendly_products)
 
+            cves = advisory.get("cves", [])
+            if isinstance(cves, list):
+                cves_value = ", ".join(cves)
+            else:
+                cves_value = str(cves)
+
+            cwe = advisory.get("cwe", [])
+            if isinstance(cwe, list):
+                cwe_value = ", ".join(cwe)
+            else:
+                cwe_value = str(cwe)
+
             row = {
                 "matched_groups": matched_groups_value,
                 "friendly_products": friendly_products_value,
@@ -425,11 +501,11 @@ def write_advisories_to_csv(advisories, selected_groups, start_date, end_date):
                 "advisoryId": advisory.get("advisoryId", ""),
                 "sir": advisory.get("sir", ""),
                 "cvssBaseScore": advisory.get("cvssBaseScore", ""),
-                "cves": advisory.get("cves", ""),
+                "cves": cves_value,
                 "advisoryTitle": advisory.get("advisoryTitle", ""),
                 "productNames": product_names_value,
                 "publicationUrl": advisory.get("publicationUrl", ""),
-                "cwe": advisory.get("cwe", ""),
+                "cwe": cwe_value,
             }
 
             writer.writerow(row)
@@ -442,63 +518,22 @@ def main():
     args = parse_arguments(product_groups)
     start_date, end_date = resolve_date_range(args)
 
-    print()
-    print("PSIRT Reporter")
-    print("--------------")
-    print(f"Groups: {args.group}")
-
-    if args.start_date and args.end_date:
-        print(f"Start date: {start_date}")
-        print(f"End date: {end_date}")
-    else:
-        print(f"Days: {args.days}")
-        print(f"Start date: {start_date}")
-        print(f"End date: {end_date}")
-
-    print()
+    print_runtime_settings(args, start_date, end_date)
 
     advisories = fetch_all_advisories(start_date, end_date)
     print_advisory_summary(advisories)
-
-    print("Loaded product groups:")
-    print(list(product_groups.keys()))
-
-    if advisories:
-        print()
-        print("First advisory product names:")
-        for product_name in advisories[0].get("productNames", []):
-            print(product_name)
-
-        sample_classification = classify_advisory_products(
-            advisories[0].get("productNames", []),
-            product_groups,
-        )
-
-        print()
-        print("Sample advisory group matches:")
-        print(sample_classification["matched_groups"])
-
-        print("Sample friendly product matches:")
-        print(sample_classification["friendly_products"])
+    print_loaded_product_groups(product_groups)
+    print_sample_classification(advisories, product_groups)
 
     classified_advisories = classify_all_advisories(advisories, product_groups)
-
     filtered_advisories = filter_advisories_by_group(
         classified_advisories,
         args.group,
     )
 
-    print()
-    print(f"Filtered advisories: {len(filtered_advisories)}")
+    print_filtered_summary(filtered_advisories)
 
-    if filtered_advisories:
-        print("Matched groups for first filtered advisory:")
-        print(filtered_advisories[0].get("matched_groups", []))
-
-        print("Friendly products for first filtered advisory:")
-        print(filtered_advisories[0].get("friendly_products", []))
-
-    unique_product_names = extract_unique_product_names(filtered_advisories)
+    unique_product_names = extract_unique_raw_product_names(filtered_advisories)
 
     print()
     print(f"Total unique product names discovered: {len(unique_product_names)}")
