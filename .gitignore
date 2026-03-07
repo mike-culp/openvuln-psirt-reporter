@@ -16,6 +16,7 @@ venv/
 # Output reports
 output/
 *.csv
+*.txt
 
 # IDE / editor files
 .vscode/
