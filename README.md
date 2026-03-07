@@ -101,7 +101,7 @@ pyyaml
 
 Install them with:
 
-pip install requests pyyaml
+pip install -r requirements.txt
 
 ---
 
