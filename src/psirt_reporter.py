@@ -1,12 +1,14 @@
 import os
 from datetime import datetime, timedelta
-
 import requests
-
+from pathlib import Path
+import yaml
 
 TOKEN_URL = "https://id.cisco.com/oauth2/default/v1/token"
 BASE_URL = "https://apix.cisco.com/security/advisories/v2"
 ADVISORIES_URL = f"{BASE_URL}/all/lastpublished"
+ROOT_DIR = Path(__file__).resolve().parents[1]
+PRODUCT_GROUPS_FILE = ROOT_DIR / "config" / "product_groups.yaml"
 
 CLIENT_ID = os.getenv("OPENVULN_CLIENT_ID")
 CLIENT_SECRET = os.getenv("OPENVULN_CLIENT_SECRET")
@@ -34,6 +36,14 @@ def get_access_token():
 
     response.raise_for_status()
     return response.json()["access_token"]
+
+
+def load_product_groups():
+    """Load product group definitions from the YAML config file."""
+    with open(PRODUCT_GROUPS_FILE, "r", encoding="utf-8") as file_handle:
+        config_data = yaml.safe_load(file_handle)
+
+    return config_data["groups"]
 
 
 def fetch_all_advisories(days_back=365):
@@ -103,26 +113,32 @@ def fetch_all_advisories(days_back=365):
 def extract_unique_product_names(advisories):
     """
     Extract a sorted list of unique product names from advisory data.
-
-    The API returns productNames as a comma-separated string, so this
-    function splits the string and normalizes whitespace.
+    Handles both string and list formats returned by the API.
     """
+
     unique_product_names = set()
 
     for advisory in advisories:
-        product_names = advisory.get("productNames", "")
+        product_names = advisory.get("productNames")
 
         if not product_names:
             continue
 
-        for product_name in product_names.split(","):
-            cleaned_name = product_name.strip()
+        # If the API returns a list
+        if isinstance(product_names, list):
+            for product_name in product_names:
+                cleaned_name = product_name.strip()
+                if cleaned_name:
+                    unique_product_names.add(cleaned_name)
 
-            if cleaned_name:
-                unique_product_names.add(cleaned_name)
+        # If the API returns a string
+        elif isinstance(product_names, str):
+            for product_name in product_names.split(","):
+                cleaned_name = product_name.strip()
+                if cleaned_name:
+                    unique_product_names.add(cleaned_name)
 
     return sorted(unique_product_names)
-
 
 def print_advisory_summary(advisories):
     """Print a small summary of the advisory pull."""
@@ -149,12 +165,34 @@ def print_unique_product_names(product_names):
         print(product_name)
 
 
+def write_unique_product_names(product_names):
+    """Write unique product names to a text file for review."""
+    output_file = "unique_product_names.txt"
+
+    with open(output_file, "w", encoding="utf-8") as file_handle:
+        for product_name in product_names:
+            file_handle.write(f"{product_name}\n")
+
+    print()
+    print(f"Unique product names written to: {output_file}")
+
+
 def main():
     advisories = fetch_all_advisories(days_back=365)
     print_advisory_summary(advisories)
 
+    product_groups = load_product_groups()
+    print()
+    print("Loaded product groups:")
+    print(list(product_groups.keys()))
+
     unique_product_names = extract_unique_product_names(advisories)
-    print_unique_product_names(unique_product_names)
+
+    print()
+    print(f"Total unique product names discovered: {len(unique_product_names)}")
+
+    print_unique_product_names(unique_product_names[:50])
+    write_unique_product_names(unique_product_names)
 
 
 if __name__ == "__main__":
