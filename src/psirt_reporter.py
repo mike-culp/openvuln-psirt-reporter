@@ -1,9 +1,9 @@
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-
 import requests
 import yaml
+import argparse
 
 
 TOKEN_URL = "https://id.cisco.com/oauth2/default/v1/token"
@@ -47,6 +47,39 @@ def load_product_groups():
         config_data = yaml.safe_load(file_handle)
 
     return config_data["groups"]
+
+
+def parse_arguments(product_groups):
+    """Parse command line arguments."""
+
+    group_names = list(product_groups.keys())
+
+    group_help_text = (
+        "Product groups to include.\n\n"
+        "Available groups:\n"
+        + "\n".join(f"  {g}" for g in group_names)
+        + "\n\nUse 'all' to include everything (default)."
+    )
+
+    parser = argparse.ArgumentParser(
+        description="Cisco PSIRT advisory reporter"
+    )
+
+    parser.add_argument(
+        "--group",
+        nargs="+",
+        default=["all"],
+        help=group_help_text,
+    )
+
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=60,
+        help="Number of days back to pull advisories (default: 60)",
+    )
+
+    return parser.parse_args()
 
 
 def classify_advisory_products(product_names, product_groups):
@@ -246,10 +279,19 @@ def write_unique_product_names(product_names):
 
 
 def main():
-    advisories = fetch_all_advisories(days_back=365)
+    product_groups = load_product_groups()
+    args = parse_arguments(product_groups)
+
+    print()
+    print("PSIRT Reporter")
+    print("--------------")
+    print(f"Groups: {args.group}")
+    print(f"Days: {args.days}")
+    print()
+
+    advisories = fetch_all_advisories(days_back=args.days)
     print_advisory_summary(advisories)
 
-    product_groups = load_product_groups()
     print()
     print("Loaded product groups:")
     print(list(product_groups.keys()))
@@ -286,7 +328,6 @@ def main():
 
     print_unique_product_names(unique_product_names[:50])
     write_unique_product_names(unique_product_names)
-
 
 if __name__ == "__main__":
     main()
