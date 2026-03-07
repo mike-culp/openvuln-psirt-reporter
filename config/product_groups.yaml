@@ -1,113 +1,433 @@
 groups:
   netsec:
     display_name: NetSec
-    match:
-      - "Secure Firewall Threat Defense"
-      - "Firepower Threat Defense"
-      - "Secure Firewall Management Center"
-      - "Firepower Management Center"
-      - "Firepower Extensible Operating System"
-      - "FXOS"
-      - "Adaptive Security Appliance"
-      - "ASA"
-      - "Secure Web Appliance"
-      - "Secure Email"
-      - "Secure Email and Web Manager"
-      - "Secure Endpoint"
-      - "Secure Endpoint Private Cloud Console"
-      - "UTD SNORT IPS Engine"
-      - "Secure Network Analytics"
-      - "Cyber Vision"
-      - "Duo"
-      - "Duo Authentication Proxy"
-    exclude: []
+    products:
+      ASA:
+        match:
+          - "Adaptive Security Appliance"
+          - "ASA"
+        exclude: []
+
+      FTD:
+        match:
+          - "Secure Firewall Threat Defense"
+          - "Firepower Threat Defense"
+          - "FTD"
+        exclude: []
+
+      FMC:
+        match:
+          - "Secure Firewall Management Center"
+          - "Firepower Management Center"
+          - "FMC"
+        exclude: []
+
+      FXOS:
+        match:
+          - "Firepower Extensible Operating System"
+          - "FXOS"
+        exclude: []
+
+      SWA:
+        match:
+          - "Secure Web Appliance"
+        exclude: []
+
+      Secure Email:
+        match:
+          - "Secure Email"
+        exclude:
+          - "Secure Email and Web Manager"
+
+      Secure Email and Web Manager:
+        match:
+          - "Secure Email and Web Manager"
+        exclude: []
+
+      Secure Endpoint:
+        match:
+          - "Secure Endpoint"
+        exclude:
+          - "Secure Endpoint Private Cloud Console"
+
+      Secure Endpoint Private Cloud Console:
+        match:
+          - "Secure Endpoint Private Cloud Console"
+        exclude: []
+
+      Secure Network Analytics:
+        match:
+          - "Secure Network Analytics"
+        exclude: []
+
+      Duo:
+        match:
+          - "Duo"
+        exclude:
+          - "Duo Authentication Proxy"
+
+      Duo Authentication Proxy:
+        match:
+          - "Duo Authentication Proxy"
+        exclude: []
+
+      Cyber Vision:
+        match:
+          - "Cyber Vision"
+        exclude: []
+
+      SNORT IPS Engine:
+        match:
+          - "UTD SNORT IPS Engine"
+          - "SNORT IPS Engine"
+        exclude: []
 
   enterprise:
     display_name: Enterprise Networking
-    match:
-      - "IOS XE"
-      - "IOS XR"
-      - "IOS"
-      - "Digital Network Architecture Center"
-      - "DNA Center"
-      - "DNA Spaces"
-      - "Identity Services Engine"
-      - "ISE Passive Identity Connector"
-      - "Prime Infrastructure"
-      - "Evolved Programmable Network Manager"
-      - "EPNM"
-      - "Network Services Orchestrator"
-      - "Small Business RV Series Router"
-      - "Catalyst SD-WAN"
-      - "SD-WAN Manager"
-      - "SD-WAN vEdge"
-      - "SD-WAN vContainer"
-    exclude: []
+    products:
+      IOS:
+        match:
+          - "Cisco IOS"
+        exclude:
+          - "IOS XE"
+          - "IOS XR"
+
+      IOS XE:
+        match:
+          - "IOS XE"
+        exclude: []
+
+      IOS XR:
+        match:
+          - "IOS XR"
+        exclude: []
+
+      Catalyst SD-WAN:
+        match:
+          - "Catalyst SD-WAN"
+        exclude:
+          - "Catalyst SD-WAN Manager"
+
+      Catalyst SD-WAN Manager:
+        match:
+          - "Catalyst SD-WAN Manager"
+        exclude: []
+
+      DNA Center:
+        match:
+          - "Digital Network Architecture Center"
+          - "DNA Center"
+        exclude: []
+
+      DNA Spaces:
+        match:
+          - "DNA Spaces Connector"
+          - "DNA Spaces"
+        exclude: []
+
+      ISE:
+        match:
+          - "Identity Services Engine"
+        exclude:
+          - "ISE Passive Identity Connector"
+
+      ISE Passive Identity Connector:
+        match:
+          - "ISE Passive Identity Connector"
+        exclude: []
+
+      Prime Infrastructure:
+        match:
+          - "Prime Infrastructure"
+        exclude: []
+
+      EPNM:
+        match:
+          - "Evolved Programmable Network Manager"
+          - "EPNM"
+        exclude: []
+
+      NSO:
+        match:
+          - "Network Services Orchestrator"
+        exclude: []
+
+      Intelligent Node Manager:
+        match:
+          - "Intelligent Node Manager"
+        exclude: []
+
+      Small Business RV Router:
+        match:
+          - "Small Business RV Series Router"
+        exclude: []
+
+      Redundancy Configuration Manager:
+        match:
+          - "Redundancy Configuration Manager"
+        exclude: []
+
+      ThousandEyes Endpoint Agent:
+        match:
+          - "ThousandEyes Endpoint Agent"
+        exclude: []
 
   datacenter:
     display_name: Data Center
-    match:
-      - "NX-OS"
-      - "Nexus Dashboard"
-      - "Application Policy Infrastructure Controller"
-      - "APIC"
-      - "Data Center Network Manager"
-      - "ACI Mode"
-      - "Cloud Native Broadband Router"
-      - "Enterprise NFV Infrastructure"
-      - "ConfD"
-    exclude: []
+    products:
+      NX-OS:
+        match:
+          - "NX-OS Software"
+          - "NX-OS"
+        exclude:
+          - "ACI Mode"
+
+      NX-OS ACI Mode:
+        match:
+          - "NX-OS System Software in ACI Mode"
+          - "ACI Mode"
+        exclude: []
+
+      APIC:
+        match:
+          - "Application Policy Infrastructure Controller"
+          - "APIC"
+        exclude: []
+
+      Nexus Dashboard:
+        match:
+          - "Nexus Dashboard"
+        exclude: []
+
+      DCNM:
+        match:
+          - "Data Center Network Manager"
+        exclude: []
+
+      NCBR:
+        match:
+          - "Cloud Native Broadband Router"
+        exclude: []
+
+      Enterprise NFV:
+        match:
+          - "Enterprise NFV Infrastructure"
+        exclude: []
+
+      ConfD:
+        match:
+          - "ConfD"
+        exclude: []
+
+      Smart PHY:
+        match:
+          - "Smart PHY"
+        exclude: []
+
+      Automated Fault Management:
+        match:
+          - "Automated Fault Management"
+        exclude: []
 
   compute:
     display_name: Compute
-    match:
-      - "Unified Computing System"
-      - "UCS"
-      - "Intersight Virtual Appliance"
-    exclude: []
+    products:
+      UCS Managed:
+        match:
+          - "Unified Computing System (Managed)"
+        exclude: []
+
+      UCS Standalone:
+        match:
+          - "Unified Computing System (Standalone)"
+        exclude: []
+
+      UCSE:
+        match:
+          - "Unified Computing System E-Series Software"
+          - "UCSE"
+        exclude: []
+
+      Intersight:
+        match:
+          - "Intersight Virtual Appliance"
+        exclude: []
 
   wireless:
     display_name: Wireless
-    match:
-      - "Wireless LAN Controller"
-      - "WLC"
-      - "Aironet Access Point"
-      - "Ultra-Reliable Wireless Backhaul"
-    exclude: []
+    products:
+      WLC:
+        match:
+          - "Wireless LAN Controller"
+          - "WLC"
+        exclude: []
+
+      Aironet:
+        match:
+          - "Aironet Access Point"
+        exclude: []
+
+      Ultra-Reliable Wireless Backhaul:
+        match:
+          - "Ultra-Reliable Wireless Backhaul"
+        exclude: []
 
   collab:
     display_name: Collaboration
-    match:
-      - "Unified Communications Manager"
-      - "IM and Presence"
-      - "Unity Connection"
-      - "Webex App"
-      - "Webex Meetings"
-      - "TelePresence"
-      - "RoomOS"
-      - "Meeting Management"
-      - "Emergency Responder"
-      - "BroadWorks"
-      - "Session Initiation Protocol"
-      - "SIP Software"
-      - "Unified Contact Center"
-      - "Packaged Contact Center Enterprise"
-      - "Prime Collaboration Deployment"
-      - "Finesse"
-      - "Virtualized Voice Browser"
-      - "Unified Intelligence Center"
-      - "Intelligent Contact Management"
-      - "SocialMiner"
-      - "Enterprise Chat and Email"
-    exclude: []
+    products:
+      CUCM:
+        match:
+          - "Unified Communications Manager"
+        exclude:
+          - "IM and Presence"
+
+      CUCM IM&P:
+        match:
+          - "Unified Communications Manager IM and Presence"
+          - "IM and Presence"
+        exclude: []
+
+      Unity Connection:
+        match:
+          - "Unity Connection"
+        exclude: []
+
+      UCCE:
+        match:
+          - "Unified Contact Center Enterprise"
+        exclude:
+          - "Packaged Contact Center Enterprise"
+          - "Unified Contact Center Express"
+
+      UCCX:
+        match:
+          - "Unified Contact Center Express"
+        exclude: []
+
+      PCCE:
+        match:
+          - "Packaged Contact Center Enterprise"
+        exclude: []
+
+      Unified Intelligence Center:
+        match:
+          - "Unified Intelligence Center"
+        exclude: []
+
+      ICM:
+        match:
+          - "Unified Intelligent Contact Management"
+          - "Intelligent Contact Management"
+        exclude: []
+
+      Finesse:
+        match:
+          - "Finesse"
+        exclude: []
+
+      BroadWorks:
+        match:
+          - "BroadWorks"
+        exclude: []
+
+      Emergency Responder:
+        match:
+          - "Emergency Responder"
+        exclude: []
+
+      TelePresence:
+        match:
+          - "TelePresence Endpoint Software"
+          - "TelePresence"
+        exclude: []
+
+      RoomOS:
+        match:
+          - "RoomOS Software"
+        exclude: []
+
+      Webex App:
+        match:
+          - "Webex App"
+        exclude:
+          - "Webex Meetings"
+
+      Webex Meetings:
+        match:
+          - "Webex Meetings"
+        exclude: []
+
+      Meeting Management:
+        match:
+          - "Meeting Management"
+        exclude: []
+
+      Prime Collaboration Deployment:
+        match:
+          - "Prime Collaboration Deployment"
+        exclude: []
+
+      SIP Software:
+        match:
+          - "Session Initiation Protocol"
+          - "SIP Software"
+        exclude: []
+
+      Enterprise Chat and Email:
+        match:
+          - "Enterprise Chat and Email"
+        exclude: []
+
+      SocialMiner:
+        match:
+          - "SocialMiner"
+        exclude: []
+
+      Virtualized Voice Browser:
+        match:
+          - "Virtualized Voice Browser"
+        exclude: []
 
   cloud:
     display_name: Cloud
-    match:
-      - "Meraki"
-      - "Smart License Utility"
-      - "Smart PHY"
-      - "Ultra Cloud Core"
-      - "Ultra Gateway Platform"
-      - "ThousandEyes"
-    exclude: []
+    products:
+      Meraki MX:
+        match:
+          - "Meraki MX"
+        exclude: []
+
+      Smart License Utility:
+        match:
+          - "Smart License Utility"
+        exclude: []
+
+      Ultra Cloud Core PCF:
+        match:
+          - "Ultra Cloud Core - Policy Control Function"
+        exclude: []
+
+      Ultra Cloud Core SMF:
+        match:
+          - "Ultra Cloud Core - Session Management Function"
+        exclude: []
+
+      Ultra Cloud Core SMI:
+        match:
+          - "Ultra Cloud Core - Subscriber Microservices Infrastructure"
+        exclude: []
+
+      Ultra Gateway Platform:
+        match:
+          - "Ultra Gateway Platform"
+        exclude: []
+
+      ASR 5000:
+        match:
+          - "ASR 5000 Series Software"
+        exclude: []
+
+      Ultra Services Platform:
+        match:
+          - "Ultra"
+        exclude:
+          - "Ultra-Reliable Wireless Backhaul"

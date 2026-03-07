@@ -4,6 +4,8 @@ from pathlib import Path
 import requests
 import yaml
 import argparse
+import csv
+
 
 
 TOKEN_URL = "https://id.cisco.com/oauth2/default/v1/token"
@@ -12,6 +14,7 @@ ADVISORIES_URL = f"{BASE_URL}/all/lastpublished"
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 PRODUCT_GROUPS_FILE = ROOT_DIR / "config" / "product_groups.yaml"
+OUTPUT_DIR = ROOT_DIR / "output"
 
 CLIENT_ID = os.getenv("OPENVULN_CLIENT_ID")
 CLIENT_SECRET = os.getenv("OPENVULN_CLIENT_SECRET")
@@ -101,40 +104,53 @@ def classify_advisory_products(product_names, product_groups):
         product_groups: The groups loaded from product_groups.yaml.
 
     Returns:
-        A list of matching group keys.
+        A dictionary with:
+            - matched_groups: list of matching group keys
+            - friendly_products: list of matching friendly product names
     """
-    matched_groups = []
+    matched_groups = set()
+    friendly_products = set()
 
     if not product_names:
-        return matched_groups
+        return {
+            "matched_groups": [],
+            "friendly_products": [],
+        }
 
     for group_key, group_config in product_groups.items():
-        match_terms = group_config.get("match", [])
-        exclude_terms = group_config.get("exclude", [])
+        products = group_config.get("products", {})
 
-        group_matched = False
+        for friendly_name, product_config in products.items():
+            match_terms = product_config.get("match", [])
+            exclude_terms = product_config.get("exclude", [])
 
-        for product_name in product_names:
-            product_name_lower = product_name.lower()
+            product_matched = False
 
-            matches_group = any(
-                match_term.lower() in product_name_lower
-                for match_term in match_terms
-            )
+            for product_name in product_names:
+                product_name_lower = product_name.lower()
 
-            excluded_from_group = any(
-                exclude_term.lower() in product_name_lower
-                for exclude_term in exclude_terms
-            )
+                matches_product = any(
+                    match_term.lower() in product_name_lower
+                    for match_term in match_terms
+                )
 
-            if matches_group and not excluded_from_group:
-                group_matched = True
-                break
+                excluded_from_product = any(
+                    exclude_term.lower() in product_name_lower
+                    for exclude_term in exclude_terms
+                )
 
-        if group_matched:
-            matched_groups.append(group_key)
+                if matches_product and not excluded_from_product:
+                    product_matched = True
+                    break
 
-    return matched_groups
+            if product_matched:
+                matched_groups.add(group_key)
+                friendly_products.add(friendly_name)
+
+    return {
+        "matched_groups": sorted(matched_groups),
+        "friendly_products": sorted(friendly_products),
+    }
 
 
 def classify_all_advisories(advisories, product_groups):
@@ -143,16 +159,19 @@ def classify_all_advisories(advisories, product_groups):
 
     Returns:
         A new list of dictionaries. Each dictionary contains the original
-        advisory plus a new key called 'matched_groups'.
+        advisory plus:
+            - matched_groups
+            - friendly_products
     """
     classified_advisories = []
 
     for advisory in advisories:
         product_names = advisory.get("productNames", [])
-        matched_groups = classify_advisory_products(product_names, product_groups)
+        classification = classify_advisory_products(product_names, product_groups)
 
         advisory_with_groups = advisory.copy()
-        advisory_with_groups["matched_groups"] = matched_groups
+        advisory_with_groups["matched_groups"] = classification["matched_groups"]
+        advisory_with_groups["friendly_products"] = classification["friendly_products"]
 
         classified_advisories.append(advisory_with_groups)
 
@@ -337,10 +356,92 @@ def resolve_date_range(args):
     return start_date, end_date
 
 
+def write_advisories_to_csv(advisories, selected_groups, start_date, end_date):
+    """
+    Write filtered advisories to a CSV file.
+
+    Args:
+        advisories: List of filtered advisory dictionaries
+        selected_groups: List of selected groups from CLI
+        start_date: Start date used for the query
+        end_date: End date used for the query
+
+    Returns:
+        Path to the written CSV file
+    """
+    OUTPUT_DIR.mkdir(exist_ok=True)
+
+    if "all" in selected_groups:
+        group_label = "all"
+    else:
+        group_label = "-".join(selected_groups)
+
+    file_name = (
+        f"psirt_{group_label}_{start_date.isoformat()}_to_{end_date.isoformat()}.csv"
+    )
+    output_file = OUTPUT_DIR / file_name
+
+    fieldnames = [
+        "matched_groups",
+        "friendly_products",
+        "kev",
+        "firstPublished",
+        "lastUpdated",
+        "status",
+        "advisoryId",
+        "sir",
+        "cvssBaseScore",
+        "cves",
+        "advisoryTitle",
+        "productNames",
+        "publicationUrl",
+        "cwe",
+    ]
+
+    with open(output_file, "w", newline="", encoding="utf-8") as file_handle:
+        writer = csv.DictWriter(file_handle, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for advisory in advisories:
+            product_names = advisory.get("productNames", [])
+            if isinstance(product_names, list):
+                product_names_value = ", ".join(product_names)
+            else:
+                product_names_value = str(product_names)
+
+            matched_groups = advisory.get("matched_groups", [])
+            matched_groups_value = ", ".join(matched_groups)
+
+            friendly_products = advisory.get("friendly_products", [])
+            friendly_products_value = ", ".join(friendly_products)
+
+            row = {
+                "matched_groups": matched_groups_value,
+                "friendly_products": friendly_products_value,
+                "kev": "",
+                "firstPublished": advisory.get("firstPublished", ""),
+                "lastUpdated": advisory.get("lastUpdated", ""),
+                "status": advisory.get("status", ""),
+                "advisoryId": advisory.get("advisoryId", ""),
+                "sir": advisory.get("sir", ""),
+                "cvssBaseScore": advisory.get("cvssBaseScore", ""),
+                "cves": advisory.get("cves", ""),
+                "advisoryTitle": advisory.get("advisoryTitle", ""),
+                "productNames": product_names_value,
+                "publicationUrl": advisory.get("publicationUrl", ""),
+                "cwe": advisory.get("cwe", ""),
+            }
+
+            writer.writerow(row)
+
+    return output_file
+
+
 def main():
     product_groups = load_product_groups()
     args = parse_arguments(product_groups)
     start_date, end_date = resolve_date_range(args)
+
     print()
     print("PSIRT Reporter")
     print("--------------")
@@ -353,11 +454,12 @@ def main():
         print(f"Days: {args.days}")
         print(f"Start date: {start_date}")
         print(f"End date: {end_date}")
-        print()
 
     print()
+
     advisories = fetch_all_advisories(start_date, end_date)
     print_advisory_summary(advisories)
+
     print("Loaded product groups:")
     print(list(product_groups.keys()))
 
@@ -367,21 +469,24 @@ def main():
         for product_name in advisories[0].get("productNames", []):
             print(product_name)
 
-        sample_matches = classify_advisory_products(
+        sample_classification = classify_advisory_products(
             advisories[0].get("productNames", []),
             product_groups,
         )
 
         print()
         print("Sample advisory group matches:")
-        print(sample_matches)
+        print(sample_classification["matched_groups"])
+
+        print("Sample friendly product matches:")
+        print(sample_classification["friendly_products"])
 
     classified_advisories = classify_all_advisories(advisories, product_groups)
 
     filtered_advisories = filter_advisories_by_group(
-    classified_advisories,
-    args.group,
-)
+        classified_advisories,
+        args.group,
+    )
 
     print()
     print(f"Filtered advisories: {len(filtered_advisories)}")
@@ -389,13 +494,29 @@ def main():
     if filtered_advisories:
         print("Matched groups for first filtered advisory:")
         print(filtered_advisories[0].get("matched_groups", []))
-        unique_product_names = extract_unique_product_names(filtered_advisories)
+
+        print("Friendly products for first filtered advisory:")
+        print(filtered_advisories[0].get("friendly_products", []))
+
+    unique_product_names = extract_unique_product_names(filtered_advisories)
+
     print()
     print(f"Total unique product names discovered: {len(unique_product_names)}")
     print("Showing the first 50 unique product names alphabetically:")
 
     print_unique_product_names(unique_product_names[:50])
     write_unique_product_names(unique_product_names)
+
+    csv_file = write_advisories_to_csv(
+        filtered_advisories,
+        args.group,
+        start_date,
+        end_date,
+    )
+
+    print()
+    print(f"CSV report written to: {csv_file}")
+
 
 if __name__ == "__main__":
     main()
