@@ -1,12 +1,15 @@
 import os
 from datetime import datetime, timedelta
-import requests
 from pathlib import Path
+
+import requests
 import yaml
+
 
 TOKEN_URL = "https://id.cisco.com/oauth2/default/v1/token"
 BASE_URL = "https://apix.cisco.com/security/advisories/v2"
 ADVISORIES_URL = f"{BASE_URL}/all/lastpublished"
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 PRODUCT_GROUPS_FILE = ROOT_DIR / "config" / "product_groups.yaml"
 
@@ -44,6 +47,73 @@ def load_product_groups():
         config_data = yaml.safe_load(file_handle)
 
     return config_data["groups"]
+
+
+def classify_advisory_products(product_names, product_groups):
+    """
+    Match an advisory's product names against the configured product groups.
+
+    Args:
+        product_names: A list of product names from one advisory.
+        product_groups: The groups loaded from product_groups.yaml.
+
+    Returns:
+        A list of matching group keys.
+    """
+    matched_groups = []
+
+    if not product_names:
+        return matched_groups
+
+    for group_key, group_config in product_groups.items():
+        match_terms = group_config.get("match", [])
+        exclude_terms = group_config.get("exclude", [])
+
+        group_matched = False
+
+        for product_name in product_names:
+            product_name_lower = product_name.lower()
+
+            matches_group = any(
+                match_term.lower() in product_name_lower
+                for match_term in match_terms
+            )
+
+            excluded_from_group = any(
+                exclude_term.lower() in product_name_lower
+                for exclude_term in exclude_terms
+            )
+
+            if matches_group and not excluded_from_group:
+                group_matched = True
+                break
+
+        if group_matched:
+            matched_groups.append(group_key)
+
+    return matched_groups
+
+
+def classify_all_advisories(advisories, product_groups):
+    """
+    Classify every advisory using the configured product groups.
+
+    Returns:
+        A new list of dictionaries. Each dictionary contains the original
+        advisory plus a new key called 'matched_groups'.
+    """
+    classified_advisories = []
+
+    for advisory in advisories:
+        product_names = advisory.get("productNames", [])
+        matched_groups = classify_advisory_products(product_names, product_groups)
+
+        advisory_with_groups = advisory.copy()
+        advisory_with_groups["matched_groups"] = matched_groups
+
+        classified_advisories.append(advisory_with_groups)
+
+    return classified_advisories
 
 
 def fetch_all_advisories(days_back=365):
@@ -115,7 +185,6 @@ def extract_unique_product_names(advisories):
     Extract a sorted list of unique product names from advisory data.
     Handles both string and list formats returned by the API.
     """
-
     unique_product_names = set()
 
     for advisory in advisories:
@@ -124,14 +193,12 @@ def extract_unique_product_names(advisories):
         if not product_names:
             continue
 
-        # If the API returns a list
         if isinstance(product_names, list):
             for product_name in product_names:
                 cleaned_name = product_name.strip()
                 if cleaned_name:
                     unique_product_names.add(cleaned_name)
 
-        # If the API returns a string
         elif isinstance(product_names, str):
             for product_name in product_names.split(","):
                 cleaned_name = product_name.strip()
@@ -139,6 +206,7 @@ def extract_unique_product_names(advisories):
                     unique_product_names.add(cleaned_name)
 
     return sorted(unique_product_names)
+
 
 def print_advisory_summary(advisories):
     """Print a small summary of the advisory pull."""
@@ -156,9 +224,9 @@ def print_advisory_summary(advisories):
 
 
 def print_unique_product_names(product_names):
-    """Print the discovered unique product names."""
+    """Print a list of product names."""
     print()
-    print(f"Unique product names discovered: {len(product_names)}")
+    print(f"Product names shown: {len(product_names)}")
     print()
 
     for product_name in product_names:
@@ -186,10 +254,35 @@ def main():
     print("Loaded product groups:")
     print(list(product_groups.keys()))
 
+    if advisories:
+        print()
+        print("First advisory product names:")
+        for product_name in advisories[0].get("productNames", []):
+            print(product_name)
+
+        sample_matches = classify_advisory_products(
+            advisories[0].get("productNames", []),
+            product_groups,
+        )
+
+        print()
+        print("Sample advisory group matches:")
+        print(sample_matches)
+
+    classified_advisories = classify_all_advisories(advisories, product_groups)
+
+    print()
+    print(f"Classified advisories: {len(classified_advisories)}")
+
+    if classified_advisories:
+        print("Matched groups for first classified advisory:")
+        print(classified_advisories[0].get("matched_groups", []))
+
     unique_product_names = extract_unique_product_names(advisories)
 
     print()
     print(f"Total unique product names discovered: {len(unique_product_names)}")
+    print("Showing the first 50 unique product names alphabetically:")
 
     print_unique_product_names(unique_product_names[:50])
     write_unique_product_names(unique_product_names)
