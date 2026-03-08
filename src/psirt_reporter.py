@@ -21,12 +21,19 @@ CLIENT_SECRET = os.getenv("OPENVULN_CLIENT_SECRET")
 KEV_CATALOG_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 
 
-if not CLIENT_ID or not CLIENT_SECRET:
-    raise ValueError("Missing OPENVULN_CLIENT_ID or OPENVULN_CLIENT_SECRET")
-
+def validate_credentials():
+    if not CLIENT_ID or not CLIENT_SECRET:
+        raise ValueError(
+            "Please set OPENVULN_CLIENT_ID and OPENVULN_CLIENT_SECRET "
+            "environment variables."
+        )
+    
 
 def get_access_token():
     """Authenticate to the Cisco OpenVuln API and return a bearer token."""
+    
+    validate_credentials()
+    
     response = requests.post(
         TOKEN_URL,
         auth=(CLIENT_ID, CLIENT_SECRET),
@@ -53,6 +60,16 @@ def load_product_groups():
     return config_data["groups"]
 
 
+def positive_int(value):
+    """Argparse type that only accepts integers >= 1."""
+    ivalue = int(value)
+    if ivalue < 1:
+        raise argparse.ArgumentTypeError(
+            f"invalid positive integer value: {value}"
+        )
+    return ivalue
+
+
 def parse_arguments(product_groups):
     """Parse command line arguments."""
     group_names = list(product_groups.keys())
@@ -77,9 +94,9 @@ def parse_arguments(product_groups):
 
     parser.add_argument(
         "--days",
-        type=int,
+        type=positive_int,
         default=60,
-        help="Number of days back to pull advisories (default: 60)",
+        help="Number of days to look back. Ignored if start/end date are provided.",
     )
 
     parser.add_argument(
@@ -114,26 +131,26 @@ def parse_arguments(product_groups):
 
 
 def resolve_date_range(args):
-    """
-    Determine the date range to use for the advisory query.
+    """Resolve start and end dates from CLI arguments."""
+    if args.days < 1:
+        raise ValueError("--days must be greater than or equal to 1")
 
-    Rules:
-    - If start_date and end_date are provided, use them
-    - If only one is provided, raise an error
-    - Otherwise use args.days
-    """
-    today = datetime.utcnow().date()
+    if (args.start_date and not args.end_date) or (
+        args.end_date and not args.start_date
+    ):
+        raise ValueError(
+            "Both --start-date and --end-date must be provided together."
+        )
 
     if args.start_date and args.end_date:
         start_date = datetime.strptime(args.start_date, "%Y-%m-%d").date()
         end_date = datetime.strptime(args.end_date, "%Y-%m-%d").date()
-        return start_date, end_date
+    else:
+        end_date = datetime.utcnow().date()
+        start_date = end_date - timedelta(days=args.days)
 
-    if args.start_date or args.end_date:
-        raise ValueError("Both --start-date and --end-date must be provided together")
-
-    start_date = today - timedelta(days=args.days)
-    end_date = today
+    if start_date > end_date:
+        raise ValueError("--start-date must be on or before --end-date")
 
     return start_date, end_date
 
@@ -210,13 +227,19 @@ def classify_all_advisories(advisories, product_groups):
 
     for advisory in advisories:
         product_names = advisory.get("productNames", [])
-        classification = classify_advisory_products(product_names, product_groups)
 
-        advisory_with_classification = advisory.copy()
-        advisory_with_classification["matched_groups"] = classification["matched_groups"]
-        advisory_with_classification["friendly_products"] = classification["friendly_products"]
+    if isinstance(product_names, str):
+        product_names = [product_names]
+    elif not isinstance(product_names, list):
+        product_names = [str(product_names)]
 
-        classified_advisories.append(advisory_with_classification)
+    classification = classify_advisory_products(product_names, product_groups)
+
+    advisory_with_classification = advisory.copy()
+    advisory_with_classification["matched_groups"] = classification["matched_groups"]
+    advisory_with_classification["friendly_products"] = classification["friendly_products"]
+
+    classified_advisories.append(advisory_with_classification)
 
     return classified_advisories
 
@@ -442,13 +465,20 @@ def print_sample_classification(advisories, product_groups):
     if not advisories:
         return
 
+    product_names = advisories[0].get("productNames", [])
+
+    if isinstance(product_names, str):
+        product_names = [product_names]
+    elif not isinstance(product_names, list):
+        product_names = [str(product_names)]
+
     print()
     print("First advisory product names:")
-    for product_name in advisories[0].get("productNames", []):
+    for product_name in product_names:
         print(product_name)
 
     sample_classification = classify_advisory_products(
-        advisories[0].get("productNames", []),
+        product_names,
         product_groups,
     )
 
@@ -594,6 +624,8 @@ def write_advisories_to_csv(advisories, selected_groups, start_date, end_date, k
 
 
 def main():
+    validate_credentials()
+
     product_groups = load_product_groups()
     args = parse_arguments(product_groups)
     start_date, end_date = resolve_date_range(args)
