@@ -7,6 +7,11 @@ import requests
 import yaml
 
 
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+
 TOKEN_URL = "https://id.cisco.com/oauth2/default/v1/token"
 BASE_URL = "https://apix.cisco.com/security/advisories/v2"
 ADVISORIES_URL = f"{BASE_URL}/all/lastpublished"
@@ -19,6 +24,11 @@ CLIENT_ID = os.getenv("OPENVULN_CLIENT_ID")
 CLIENT_SECRET = os.getenv("OPENVULN_CLIENT_SECRET")
 
 KEV_CATALOG_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+
+
+# ============================================================
+# API FUNCTIONS
+# ============================================================
 
 
 def validate_credentials():
@@ -58,6 +68,11 @@ def load_product_groups():
         config_data = yaml.safe_load(file_handle)
 
     return config_data["groups"]
+
+
+# ============================================================
+# CLI / INPUT HANDLING
+# ============================================================
 
 
 def positive_int(value):
@@ -161,6 +176,11 @@ def resolve_date_range(args):
     return start_date, end_date
 
 
+# ============================================================
+# CLASSIFICATION
+# ============================================================
+
+
 def classify_advisory_products(product_names, product_groups):
     """
     Match an advisory's product names against the configured product groups.
@@ -248,6 +268,11 @@ def classify_all_advisories(advisories, product_groups):
         classified_advisories.append(advisory_with_classification)
 
     return classified_advisories
+
+
+# ============================================================
+# FILTERS
+# ============================================================
 
 
 def filter_advisories_by_group(classified_advisories, selected_groups):
@@ -444,6 +469,11 @@ def extract_unique_raw_product_names(advisories):
                     unique_product_names.add(cleaned_name)
 
     return sorted(unique_product_names)
+
+
+# ============================================================
+# REPORTING / OUTPUT
+# ============================================================
 
 
 def print_runtime_settings(args, start_date, end_date):
@@ -653,6 +683,11 @@ def write_advisories_to_csv(advisories, selected_groups, start_date, end_date, k
     return output_file
 
 
+# ============================================================
+# MAIN PROGRAM FLOW
+# ============================================================
+
+
 def main():
     validate_credentials()
 
@@ -715,6 +750,11 @@ def main():
 
     print()
     print(f"CSV report written to: {csv_file}")
+
+
+# ============================================================
+# ENTRY POINT
+# ============================================================
 
 
 if __name__ == "__main__":
