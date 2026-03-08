@@ -54,6 +54,22 @@ Generates structured CSV output including:
 - affected products
 - friendly product names
 
+## CISA Known Exploited Vulnerabilities (KEV) Integration
+
+The tool automatically downloads the CISA Known Exploited Vulnerabilities catalog and checks whether any CVEs associated with an advisory are present in the KEV list.
+
+This allows engineers to quickly identify vulnerabilities that are known to be actively exploited in the wild.
+
+## KEV Filtering
+
+Use the `--kev-only` flag to return only advisories containing CVEs present in the CISA KEV catalog.
+
+This allows teams to prioritize vulnerabilities with confirmed real-world exploitation.
+
+Example:
+
+python src/psirt_reporter.py --kev-only
+
 ## Product Discovery Mode
 
 Extracts all raw product names returned by Cisco to help improve product matching rules.
@@ -316,8 +332,6 @@ apix.cisco.com
 
 Planned improvements include:
 
-- CISA Known Exploited Vulnerabilities (KEV) integration
-- KEV filtering
 - severity filtering
 - HTML reporting
 - scheduled reporting automation
