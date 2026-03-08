@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import requests
 import yaml
+import html
 
 
 # ============================================================
@@ -146,6 +147,12 @@ def parse_arguments(product_groups):
         "--kev-only",
         action="store_true",
         help="Include only advisories with CVEs present in the CISA KEV catalog",
+    )
+
+    parser.add_argument(
+        "--html",
+        action="store_true",
+        help="Generate an HTML report in addition to the CSV report",
     )
 
     return parser.parse_args()
@@ -588,6 +595,16 @@ def write_unique_product_names(product_names):
     print(f"Unique product names written to: {output_file}")
 
 
+def build_output_base_name(selected_groups, start_date, end_date):
+    """Build the shared base filename for report outputs."""
+    group_label = (
+        "all"
+        if selected_groups == ["all"]
+        else "_".join(selected_groups)
+    )
+    return f"psirt_{group_label}_{start_date}_to_{end_date}"
+
+
 def write_advisories_to_csv(advisories, selected_groups, start_date, end_date, kev_cves):
     """
     Write filtered advisories to a CSV file.
@@ -603,14 +620,8 @@ def write_advisories_to_csv(advisories, selected_groups, start_date, end_date, k
     """
     OUTPUT_DIR.mkdir(exist_ok=True)
 
-    if "all" in selected_groups:
-        group_label = "all"
-    else:
-        group_label = "-".join(selected_groups)
-
-    file_name = (
-        f"psirt_{group_label}_{start_date.isoformat()}_to_{end_date.isoformat()}.csv"
-    )
+    base_name = build_output_base_name(selected_groups, start_date, end_date)
+    file_name = f"{base_name}.csv"
     output_file = OUTPUT_DIR / file_name
 
     fieldnames = [
@@ -683,6 +694,290 @@ def write_advisories_to_csv(advisories, selected_groups, start_date, end_date, k
     return output_file
 
 
+def write_advisories_to_html(advisories, selected_groups, start_date, end_date, kev_cves):
+    """
+    Write filtered advisories to an HTML file.
+
+    Args:
+        advisories: List of filtered advisory dictionaries
+        selected_groups: List of selected groups from CLI
+        start_date: Start date used for the query
+        end_date: End date used for the query
+        kev_cves: Set of CVE IDs present in the CISA KEV catalog
+
+    Returns:
+        Path to the written HTML file
+    """
+    OUTPUT_DIR.mkdir(exist_ok=True)
+
+    base_name = build_output_base_name(selected_groups, start_date, end_date)
+    file_name = f"{base_name}.html"
+    output_file = OUTPUT_DIR / file_name
+
+    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    total_count = len(advisories)
+    kev_count = 0
+    sir_counts = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+    unique_cves = set()
+    group_counts = {}
+    product_counts = {}
+
+    for advisory in advisories:
+        cves = advisory.get("cves", []) or []
+        if isinstance(cves, str):
+            cves = [cves]
+
+        if any(cve in kev_cves for cve in cves):
+            kev_count += 1
+
+        sir = (advisory.get("sir") or "").strip()
+        if sir in sir_counts:
+            sir_counts[sir] += 1
+
+        for cve in cves:
+            if cve:
+                unique_cves.add(cve)
+
+        matched_groups = advisory.get("matched_groups", []) or []
+        if isinstance(matched_groups, str):
+            matched_groups = [matched_groups]
+
+        for group in matched_groups:
+            if group:
+                group_counts[group] = group_counts.get(group, 0) + 1
+
+        friendly_products = advisory.get("friendly_products", []) or []
+        if isinstance(friendly_products, str):
+            friendly_products = [friendly_products]
+
+        for product in friendly_products:
+            if product:
+                product_counts[product] = product_counts.get(product, 0) + 1
+
+    summary_cards_html = f"""
+    <div class="summary-grid">
+        <div class="card"><h3>Total Advisories</h3><p>{total_count}</p></div>
+        <div class="card"><h3>KEV Advisories</h3><p>{kev_count}</p></div>
+        <div class="card"><h3>Critical</h3><p>{sir_counts["Critical"]}</p></div>
+        <div class="card"><h3>High</h3><p>{sir_counts["High"]}</p></div>
+        <div class="card"><h3>Medium</h3><p>{sir_counts["Medium"]}</p></div>
+        <div class="card"><h3>Low</h3><p>{sir_counts["Low"]}</p></div>
+        <div class="card"><h3>Unique CVEs</h3><p>{len(unique_cves)}</p></div>
+    </div>
+    """
+
+    group_rows = ""
+    for group, count in sorted(group_counts.items()):
+        group_rows += (
+            f"<tr><td>{html.escape(str(group))}</td><td>{count}</td></tr>"
+        )
+
+    if not group_rows:
+        group_rows = "<tr><td colspan='2'>No group data</td></tr>"
+
+    product_rows = ""
+    for product, count in sorted(product_counts.items()):
+        product_rows += (
+            f"<tr><td>{html.escape(str(product))}</td><td>{count}</td></tr>"
+        )
+
+    if not product_rows:
+        product_rows = "<tr><td colspan='2'>No product data</td></tr>"
+
+    advisory_rows = ""
+    for advisory in advisories:
+        advisory_id = advisory.get("advisoryId", "")
+        title = advisory.get("advisoryTitle", "")
+        sir = advisory.get("sir", "")
+        cvss = advisory.get("cvssBaseScore", "")
+        status = advisory.get("status", "")
+        first_published = advisory.get("firstPublished", "")
+        last_updated = advisory.get("lastUpdated", "")
+        publication_url = advisory.get("publicationUrl", "")
+
+        cves = advisory.get("cves", []) or []
+        if isinstance(cves, list):
+            cves_display = ", ".join(cves)
+        else:
+            cves_display = str(cves)
+
+        matched_groups = advisory.get("matched_groups", []) or []
+        if isinstance(matched_groups, list):
+            matched_groups_display = ", ".join(matched_groups)
+        else:
+            matched_groups_display = str(matched_groups)
+
+        friendly_products = advisory.get("friendly_products", []) or []
+        if isinstance(friendly_products, list):
+            friendly_products_display = ", ".join(friendly_products)
+        else:
+            friendly_products_display = str(friendly_products)
+
+        kev_flag = "Yes" if any(cve in kev_cves for cve in cves if cve) else "No"
+
+        advisory_id_escaped = html.escape(str(advisory_id))
+        if publication_url:
+            advisory_link = (
+                f'<a href="{html.escape(str(publication_url))}" '
+                f'target="_blank" rel="noopener noreferrer">{advisory_id_escaped}</a>'
+            )
+        else:
+            advisory_link = advisory_id_escaped
+
+        advisory_rows += f"""
+        <tr>
+            <td>{advisory_link}</td>
+            <td>{html.escape(str(title))}</td>
+            <td>{html.escape(str(sir))}</td>
+            <td>{html.escape(str(cvss))}</td>
+            <td>{kev_flag}</td>
+            <td>{html.escape(str(matched_groups_display))}</td>
+            <td>{html.escape(str(friendly_products_display))}</td>
+            <td>{html.escape(str(cves_display))}</td>
+            <td>{html.escape(str(first_published))}</td>
+            <td>{html.escape(str(last_updated))}</td>
+            <td>{html.escape(str(status))}</td>
+        </tr>
+        """
+
+    if not advisory_rows:
+        advisory_rows = "<tr><td colspan='11'>No advisories found</td></tr>"
+
+    selected_groups_display = ", ".join(selected_groups)
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cisco PSIRT Advisory Report</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 24px;
+            color: #222;
+            background: #f7f7f7;
+        }}
+        h1, h2 {{
+            margin-bottom: 8px;
+        }}
+        .meta {{
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #fff;
+            border: 1px solid #ddd;
+        }}
+        .summary-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }}
+        .card {{
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 16px;
+        }}
+        .card h3 {{
+            margin: 0 0 8px 0;
+            font-size: 16px;
+        }}
+        .card p {{
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+            background: #fff;
+        }}
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }}
+        th {{
+            background: #efefef;
+        }}
+        a {{
+            color: #0645ad;
+            text-decoration: none;
+        }}
+        a:hover {{
+            text-decoration: underline;
+        }}
+    </style>
+</head>
+<body>
+    <h1>Cisco PSIRT Advisory Report</h1>
+
+    <div class="meta">
+        <p><strong>Generated:</strong> {html.escape(generated_at)}</p>
+        <p><strong>Selected Groups:</strong> {html.escape(selected_groups_display)}</p>
+        <p><strong>Date Range:</strong> {html.escape(start_date.isoformat())} to {html.escape(end_date.isoformat())}</p>
+    </div>
+
+    {summary_cards_html}
+
+    <h2>Group Breakdown</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Group</th>
+                <th>Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            {group_rows}
+        </tbody>
+    </table>
+
+    <h2>Product Breakdown</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            {product_rows}
+        </tbody>
+    </table>
+
+    <h2>Advisories</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Advisory ID</th>
+                <th>Title</th>
+                <th>SIR</th>
+                <th>CVSS</th>
+                <th>KEV</th>
+                <th>Matched Groups</th>
+                <th>Friendly Products</th>
+                <th>CVEs</th>
+                <th>First Published</th>
+                <th>Last Updated</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {advisory_rows}
+        </tbody>
+    </table>
+</body>
+</html>
+"""
+
+    output_file.write_text(html_content, encoding="utf-8")
+    return output_file
+
+
 # ============================================================
 # MAIN PROGRAM FLOW
 # ============================================================
@@ -750,6 +1045,16 @@ def main():
 
     print()
     print(f"CSV report written to: {csv_file}")
+
+    if args.html:
+        html_file = write_advisories_to_html(
+            filtered_advisories,
+            args.group,
+            start_date,
+            end_date,
+            kev_cves,
+        )
+        print(f"HTML report written to: {html_file}")
 
 
 # ============================================================
