@@ -73,6 +73,94 @@ This tool automates the process by:
 5. Producing a structured CSV report
 6. Discovering new product name patterns to improve classification
 
+
+---
+
+# Architecture
+
+The following diagram illustrates the high-level workflow of the PSIRT reporter.
+
+
+            +----------------------+
+            | Cisco OpenVuln API   |
+            +----------+-----------+
+                       |
+                       v
+               +---------------+
+               | Advisory Pull |
+               |  (Python API) |
+               +-------+-------+
+                       |
+                       v
+               +---------------+
+               | Product       |
+               | Classification|
+               | YAML rules    |
+               +-------+-------+
+                       |
+                       v
+        +------------------------------+
+        | KEV Intelligence Enrichment  |
+        | CISA KEV Catalog             |
+        +---------------+--------------+
+                        |
+                        v
+               +---------------+
+               | Advisory      |
+               | Filtering     |
+               +-------+-------+
+                       |
+                       v
+               +---------------+
+               | CSV Report    |
+               | Output        |
+               +---------------+
+
+The tool retrieves Cisco advisories, classifies affected products using configurable YAML rules, enriches the results with CISA KEV intelligence, and produces structured CSV output for operational analysis.
+
+
+---
+
+# Security Use Cases
+
+The PSIRT Reporter is designed to support common vulnerability management and security operations workflows.
+
+## Vulnerability Intelligence Monitoring
+
+Security teams can regularly pull Cisco PSIRT advisories and identify vulnerabilities affecting products deployed in their environment.
+
+Example: python src/psirt_reporter.py --group netsec --days 30
+
+
+This produces a report containing advisories affecting Cisco network security platforms such as:
+
+- Secure Firewall Threat Defense (FTD)
+- Adaptive Security Appliance (ASA)
+- Firepower Management Center (FMC)
+- Firepower Extensible Operating System (FXOS)
+
+---
+
+## Known Exploited Vulnerability Prioritization
+
+Teams can filter advisories to include only vulnerabilities known to be actively exploited in the wild using the CISA KEV catalog.
+
+Example:python src/psirt_reporter.py --group netsec --days 30 --kev-only
+
+This allows engineers to quickly prioritize remediation for vulnerabilities with confirmed exploitation.
+
+---
+
+## Security Advisory Reporting
+
+The generated CSV report can be used for:
+
+- vulnerability tracking
+- patch management workflows
+- security reporting
+- operational review meetings
+
+
 ---
 
 # Features
