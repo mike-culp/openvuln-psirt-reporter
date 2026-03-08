@@ -19,6 +19,8 @@ OUTPUT_DIR = ROOT_DIR / "output"
 CLIENT_ID = os.getenv("OPENVULN_CLIENT_ID")
 CLIENT_SECRET = os.getenv("OPENVULN_CLIENT_SECRET")
 
+KEV_CATALOG_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+
 
 if not CLIENT_ID or not CLIENT_SECRET:
     raise ValueError("Missing OPENVULN_CLIENT_ID or OPENVULN_CLIENT_SECRET")
@@ -293,6 +295,36 @@ def fetch_all_advisories(start_date, end_date):
     return all_advisories
 
 
+def fetch_kev_catalog():
+    """Fetch the CISA Known Exploited Vulnerabilities catalog."""
+    response = requests.get(KEV_CATALOG_URL, timeout=30)
+    response.raise_for_status()
+    return response.json()
+
+
+def extract_kev_cves(kev_catalog):
+    """Extract CVE IDs from the KEV catalog into a set."""
+    vulnerabilities = kev_catalog.get("vulnerabilities", [])
+    kev_cves = set()
+
+    for vulnerability in vulnerabilities:
+        cve_id = vulnerability.get("cveID")
+        if cve_id:
+            kev_cves.add(cve_id)
+
+    return kev_cves
+
+
+def is_kev_advisory(advisory, kev_cves):
+    """Return True if any CVE in the advisory is present in the KEV catalog."""
+    advisory_cves = advisory.get("cves", [])
+
+    if not advisory_cves:
+        return False
+
+    return any(cve in kev_cves for cve in advisory_cves)
+
+
 def extract_unique_raw_product_names(advisories):
     """
     Extract a sorted list of unique raw product names from advisory data.
@@ -420,7 +452,7 @@ def write_unique_product_names(product_names):
     print(f"Unique product names written to: {output_file}")
 
 
-def write_advisories_to_csv(advisories, selected_groups, start_date, end_date):
+def write_advisories_to_csv(advisories, selected_groups, start_date, end_date, kev_cves):
     """
     Write filtered advisories to a CSV file.
 
@@ -491,10 +523,12 @@ def write_advisories_to_csv(advisories, selected_groups, start_date, end_date):
             else:
                 cwe_value = str(cwe)
 
+            kev_value = "Y" if is_kev_advisory(advisory, kev_cves) else "N"
+
             row = {
                 "matched_groups": matched_groups_value,
                 "friendly_products": friendly_products_value,
-                "kev": "",
+                "kev": kev_value,
                 "firstPublished": advisory.get("firstPublished", ""),
                 "lastUpdated": advisory.get("lastUpdated", ""),
                 "status": advisory.get("status", ""),
@@ -521,6 +555,10 @@ def main():
     print_runtime_settings(args, start_date, end_date)
 
     advisories = fetch_all_advisories(start_date, end_date)
+    print("Fetching CISA KEV catalog...")
+    kev_catalog = fetch_kev_catalog()
+    kev_cves = extract_kev_cves(kev_catalog)
+    print(f"Loaded KEV CVEs: {len(kev_cves)}")
     print_advisory_summary(advisories)
     print_loaded_product_groups(product_groups)
     print_sample_classification(advisories, product_groups)
@@ -547,6 +585,7 @@ def main():
         args.group,
         start_date,
         end_date,
+        kev_cves,
     )
 
     print()
