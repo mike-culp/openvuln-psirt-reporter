@@ -14,7 +14,7 @@ Run the PSIRT reporter in just a few steps.
 
 ## 1. Clone the Repository
 
-git clone https://github.com/<your-username>/psirt-reporter.git  
+git clone https://github.com/mike-culp/openvuln-psirt-reporter.git  
 cd psirt-reporter
 
 ## 2. Install Dependencies
