@@ -8,6 +8,58 @@ This tool is intended for security engineers, vulnerability management teams, an
 
 ---
 
+# Quick Start
+
+Run the PSIRT reporter in just a few steps.
+
+## 1. Clone the Repository
+
+git clone https://github.com/<your-username>/psirt-reporter.git  
+cd psirt-reporter
+
+## 2. Install Dependencies
+
+pip install -r requirements.txt
+
+## 3. Set Cisco API Credentials
+
+macOS / Linux
+
+export OPENVULN_CLIENT_ID="your_client_id"  
+export OPENVULN_CLIENT_SECRET="your_client_secret"
+
+Windows PowerShell
+
+$env:OPENVULN_CLIENT_ID="your_client_id"  
+$env:OPENVULN_CLIENT_SECRET="your_client_secret"
+
+## 4. Run the Reporter
+
+python src/psirt_reporter.py
+
+This pulls advisories from the last **60 days** and generates a CSV report in:
+
+output/
+
+## Example: NetSec Advisories From the Last 30 Days
+
+python src/psirt_reporter.py --group netsec --days 30
+
+## Example: Only Known Exploited Vulnerabilities
+
+python src/psirt_reporter.py --kev-only
+
+---
+
+# Example Output
+
+Example CSV output:
+
+matched_groups,friendly_products,kev,advisoryId,cvssBaseScore,cves  
+netsec,FTD,Y,cisco-sa-ftd-rce-2026,9.8,CVE-2026-XXXX
+
+---
+
 # Overview
 
 Cisco publishes security advisories through the OpenVuln API. These advisories often include many products and versions, making it difficult to quickly determine relevance.
@@ -140,8 +192,6 @@ You need:
 - A valid **Client ID**
 - A valid **Client Secret**
 
-If you do not yet have API credentials, register an application on the Cisco Developer Platform and request access to the OpenVuln API.
-
 ---
 
 ## Python Requirements
@@ -165,38 +215,15 @@ API credentials should never be stored in source code.
 
 Set them as environment variables instead.
 
----
-
-## macOS / Linux
-
-Add to your shell profile (~/.zshrc, ~/.bashrc, etc.):
+macOS / Linux
 
 export OPENVULN_CLIENT_ID="your_client_id"  
 export OPENVULN_CLIENT_SECRET="your_client_secret"
 
-Reload your shell:
-
-source ~/.zshrc
-
-or
-
-source ~/.bashrc
-
----
-
-## Windows PowerShell (temporary)
+Windows PowerShell
 
 $env:OPENVULN_CLIENT_ID="your_client_id"  
 $env:OPENVULN_CLIENT_SECRET="your_client_secret"
-
----
-
-## Windows PowerShell (persistent)
-
-[System.Environment]::SetEnvironmentVariable("OPENVULN_CLIENT_ID","your_client_id","User")  
-[System.Environment]::SetEnvironmentVariable("OPENVULN_CLIENT_SECRET","your_client_secret","User")
-
-Restart PowerShell after setting persistent variables.
 
 ---
 
@@ -205,22 +232,6 @@ Restart PowerShell after setting persistent variables.
 Product matching rules are defined in:
 
 config/product_groups.yaml
-
-Example structure:
-
-groups:
-  netsec:
-    description: Network Security Products
-    products:
-      FTD:
-        match:
-          - "Firewall Threat Defense"
-        exclude: []
-
-      ASA:
-        match:
-          - "Adaptive Security Appliance"
-        exclude: []
 
 This allows the tool to convert raw Cisco product names into cleaner friendly names used in reports.
 
@@ -247,7 +258,7 @@ python src/psirt_reporter.py --group netsec
 
 Multiple groups:
 
-python src/psirt_reporter.py --group netsec switching
+python src/psirt_reporter.py --group netsec enterprise
 
 Include all groups:
 
@@ -274,8 +285,6 @@ Return only advisories containing CVEs listed in the CISA KEV catalog.
 python src/psirt_reporter.py --kev-only
 
 Example:
-
-NetSec KEV advisories from the last 30 days
 
 python src/psirt_reporter.py --group netsec --days 30 --kev-only
 
@@ -329,18 +338,18 @@ It helps improve product matching rules in `product_groups.yaml`.
 # Project Structure
 
 repo/
-│
-├── config/
-│   └── product_groups.yaml
-│
-├── src/
-│   └── psirt_reporter.py
-│
-├── output/
-│   └── generated reports
-│
-├── README.md
-└── LICENSE
+
+config/  
+└── product_groups.yaml  
+
+src/  
+└── psirt_reporter.py  
+
+output/  
+└── generated reports  
+
+README.md  
+LICENSE
 
 ---
 
@@ -348,7 +357,7 @@ repo/
 
 ## Missing API Credentials
 
-Ensure the following environment variables are set in the same shell where you run the script:
+Ensure the following environment variables are set:
 
 OPENVULN_CLIENT_ID  
 OPENVULN_CLIENT_SECRET
@@ -361,25 +370,6 @@ Verify:
 
 - your API key and secret are correct
 - your Cisco developer app has OpenVuln API access
-
----
-
-## No Advisories Returned
-
-Possible reasons:
-
-- No advisories were published in the selected date range
-- Product filtering excluded all results
-
----
-
-## Network / Proxy Issues
-
-Ensure outbound access to:
-
-id.cisco.com  
-apix.cisco.com  
-cisa.gov
 
 ---
 
@@ -396,5 +386,4 @@ Planned improvements include:
 
 # License
 
-This project is licensed under the MIT License.  
-See the LICENSE file for details.
+This project is licensed under the MIT License.
