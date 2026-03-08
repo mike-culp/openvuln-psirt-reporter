@@ -2,7 +2,7 @@
 
 A Python tool for querying Cisco PSIRT advisories using the Cisco OpenVuln API and generating structured CSV reports filtered by configurable product groups.
 
-The tool retrieves Cisco security advisories, classifies them by product family, and produces an operationally useful CSV report containing CVEs, severity, affected products, and advisory metadata.
+The tool retrieves Cisco security advisories, classifies them by product family, enriches them with CISA Known Exploited Vulnerabilities (KEV) intelligence, and produces an operationally useful CSV report containing CVEs, severity, affected products, and advisory metadata.
 
 This tool is intended for security engineers, vulnerability management teams, and operations teams who need quick visibility into Cisco security advisories affecting their environment.
 
@@ -17,17 +17,22 @@ This tool automates the process by:
 1. Querying Cisco PSIRT advisories
 2. Filtering to products of interest
 3. Classifying advisories by product group
-4. Producing a structured CSV report
-5. Discovering new product name patterns to improve classification
+4. Checking advisories against the CISA Known Exploited Vulnerabilities catalog
+5. Producing a structured CSV report
+6. Discovering new product name patterns to improve classification
 
 ---
 
 # Features
 
 ## Cisco OpenVuln API Integration
+
 Uses Cisco’s OAuth2 client credentials flow to authenticate and query advisories from the OpenVuln API.
 
+---
+
 ## Product Group Classification
+
 Uses a YAML configuration file to classify advisories into logical product groups with friendly names.
 
 Example supported products:
@@ -37,6 +42,8 @@ Example supported products:
 - Firepower Management Center (FMC)
 - Firepower Extensible Operating System (FXOS)
 
+---
+
 ## Flexible Date Filtering
 
 Supports:
@@ -44,21 +51,15 @@ Supports:
 - last **N days**
 - explicit **start and end dates**
 
-## CSV Reporting
-
-Generates structured CSV output including:
-
-- advisory metadata
-- severity
-- CVEs
-- affected products
-- friendly product names
+---
 
 ## CISA Known Exploited Vulnerabilities (KEV) Integration
 
 The tool automatically downloads the CISA Known Exploited Vulnerabilities catalog and checks whether any CVEs associated with an advisory are present in the KEV list.
 
 This allows engineers to quickly identify vulnerabilities that are known to be actively exploited in the wild.
+
+---
 
 ## KEV Filtering
 
@@ -70,6 +71,21 @@ Example:
 
 python src/psirt_reporter.py --kev-only
 
+---
+
+## CSV Reporting
+
+Generates structured CSV output including:
+
+- advisory metadata
+- severity
+- CVEs
+- affected products
+- friendly product names
+- KEV exploitation indicator
+
+---
+
 ## Product Discovery Mode
 
 Extracts all raw product names returned by Cisco to help improve product matching rules.
@@ -78,15 +94,37 @@ Extracts all raw product names returned by Cisco to help improve product matchin
 
 # Script Flow (High Level)
 
-1. Load product classification rules from YAML
-2. Parse command line arguments
-3. Resolve query date range
-4. Authenticate with Cisco API
-5. Retrieve advisories from OpenVuln API
-6. Classify advisories by product group
-7. Filter advisories based on selected groups
-8. Extract unique product names for analysis
-9. Export results to CSV
+1. Load product classification rules from YAML  
+2. Parse command line arguments  
+3. Resolve query date range  
+4. Authenticate with Cisco OpenVuln API  
+5. Retrieve advisories from OpenVuln API  
+6. Retrieve the CISA Known Exploited Vulnerabilities catalog  
+7. Classify advisories by product group  
+8. Filter advisories based on selected product groups  
+9. Optionally filter to KEV advisories only  
+10. Extract unique product names for analysis  
+11. Export results to CSV  
+
+---
+
+# External Data Sources
+
+The reporter pulls data from the following sources.
+
+## Cisco OpenVuln API
+
+https://apix.cisco.com/security/advisories
+
+Used to retrieve Cisco PSIRT advisories.
+
+---
+
+## CISA Known Exploited Vulnerabilities Catalog
+
+https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+
+Used to determine whether advisory CVEs are known to be actively exploited.
 
 ---
 
@@ -126,6 +164,8 @@ pip install -r requirements.txt
 API credentials should never be stored in source code.
 
 Set them as environment variables instead.
+
+---
 
 ## macOS / Linux
 
@@ -227,6 +267,20 @@ python src/psirt_reporter.py --start-date 2026-01-01 --end-date 2026-03-01
 
 ---
 
+## Show Only Known Exploited Vulnerabilities
+
+Return only advisories containing CVEs listed in the CISA KEV catalog.
+
+python src/psirt_reporter.py --kev-only
+
+Example:
+
+NetSec KEV advisories from the last 30 days
+
+python src/psirt_reporter.py --group netsec --days 30 --kev-only
+
+---
+
 # Output
 
 All generated files are written to:
@@ -245,7 +299,7 @@ output/psirt_netsec_2026-01-01_to_2026-03-01.csv
 |------|-------------|
 | matched_groups | Product groups matched from configuration |
 | friendly_products | Friendly product names |
-| kev | Placeholder for Known Exploited Vulnerabilities flag |
+| kev | Indicates whether the advisory contains a CVE listed in the CISA KEV catalog (Y/N) |
 | firstPublished | Advisory publication date |
 | lastUpdated | Advisory last update date |
 | status | Cisco advisory status |
@@ -324,7 +378,8 @@ Possible reasons:
 Ensure outbound access to:
 
 id.cisco.com  
-apix.cisco.com
+apix.cisco.com  
+cisa.gov
 
 ---
 
