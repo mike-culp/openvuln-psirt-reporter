@@ -3,7 +3,6 @@ import csv
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-
 import requests
 import yaml
 
