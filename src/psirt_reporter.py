@@ -122,6 +122,12 @@ def parse_arguments(product_groups):
     )
 
     parser.add_argument(
+        "--min-cvss",
+        type=float,
+        help="Minimum CVSS base score to include (example: 8.0)",
+    )
+
+    parser.add_argument(
         "--kev-only",
         action="store_true",
         help="Include only advisories with CVEs present in the CISA KEV catalog",
@@ -228,18 +234,18 @@ def classify_all_advisories(advisories, product_groups):
     for advisory in advisories:
         product_names = advisory.get("productNames", [])
 
-    if isinstance(product_names, str):
-        product_names = [product_names]
-    elif not isinstance(product_names, list):
-        product_names = [str(product_names)]
+        if isinstance(product_names, str):
+            product_names = [product_names]
+        elif not isinstance(product_names, list):
+            product_names = [str(product_names)]
 
-    classification = classify_advisory_products(product_names, product_groups)
+        classification = classify_advisory_products(product_names, product_groups)
 
-    advisory_with_classification = advisory.copy()
-    advisory_with_classification["matched_groups"] = classification["matched_groups"]
-    advisory_with_classification["friendly_products"] = classification["friendly_products"]
+        advisory_with_classification = advisory.copy()
+        advisory_with_classification["matched_groups"] = classification["matched_groups"]
+        advisory_with_classification["friendly_products"] = classification["friendly_products"]
 
-    classified_advisories.append(advisory_with_classification)
+        classified_advisories.append(advisory_with_classification)
 
     return classified_advisories
 
@@ -285,6 +291,26 @@ def filter_advisories_by_sir(advisories, selected_sirs):
         advisory_sir = str(advisory.get("sir", "")).strip().lower()
 
         if advisory_sir in selected_sir_set:
+            filtered_advisories.append(advisory)
+
+    return filtered_advisories
+
+def filter_advisories_by_cvss(advisories, threshold):
+    """Filter advisories by minimum CVSS base score."""
+    if threshold is None:
+        return advisories
+
+    filtered_advisories = []
+
+    for advisory in advisories:
+        score = advisory.get("cvssBaseScore")
+
+        try:
+            numeric_score = float(score)
+        except (TypeError, ValueError):
+            continue
+
+        if numeric_score >= threshold:
             filtered_advisories.append(advisory)
 
     return filtered_advisories
@@ -427,6 +453,10 @@ def print_runtime_settings(args, start_date, end_date):
     print("--------------")
     print(f"Groups: {args.group}")
     print(f"SIR filter: {args.sir if args.sir else 'all'}")
+
+    cvss_display = args.min_cvss if args.min_cvss is not None else "all"
+    print(f"Minimum CVSS: {cvss_display}")
+
     print(f"KEV only: {args.kev_only}")
 
     if args.start_date and args.end_date:
@@ -651,6 +681,11 @@ def main():
     filtered_advisories = filter_advisories_by_sir(
         filtered_advisories,
         args.sir,
+    )
+
+    filtered_advisories = filter_advisories_by_cvss(
+        filtered_advisories,
+        args.min_cvss,
     )
 
     if args.kev_only:

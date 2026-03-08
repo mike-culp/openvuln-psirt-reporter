@@ -2,7 +2,7 @@
 
 A Python tool for querying Cisco PSIRT advisories using the Cisco OpenVuln API and generating structured CSV reports filtered by configurable product groups.
 
-The tool retrieves Cisco security advisories, classifies them by product family, supports severity filtering using Cisco’s Security Impact Rating (SIR), enriches results with CISA Known Exploited Vulnerabilities (KEV) intelligence, and produces an operationally useful CSV report containing CVEs, severity, affected products, and advisory metadata.
+The tool retrieves Cisco security advisories, classifies them by product family, supports severity filtering using Cisco’s Security Impact Rating (SIR), supports filtering by minimum CVSS score, enriches results with CISA Known Exploited Vulnerabilities (KEV) intelligence, and produces an operationally useful CSV report containing CVEs, severity, affected products, and advisory metadata.
 
 This tool is intended for security engineers, vulnerability management teams, and operations teams who need quick visibility into Cisco security advisories affecting their environment.
 
@@ -14,7 +14,7 @@ Run the PSIRT reporter in just a few steps.
 
 ## 1. Clone the Repository
 
-git clone https://github.com/mike-culp/openvuln-psirt-reporter.git  
+git clone https://github.com/<your-username>/psirt-reporter.git  
 cd psirt-reporter
 
 ## 2. Install Dependencies
@@ -49,7 +49,7 @@ To see all available options and filtering capabilities:
 
 python src/psirt_reporter.py --help
 
-This displays all supported command line options including product group filtering, date ranges, severity filtering, and KEV prioritization.
+This displays all supported command line options including product group filtering, date ranges, severity filtering, CVSS filtering, and KEV prioritization.
 
 ---
 
@@ -67,9 +67,13 @@ python src/psirt_reporter.py --kev-only
 
 python src/psirt_reporter.py --sir critical high
 
-## NetSec + High Severity + KEV
+## Minimum CVSS Score
 
-python src/psirt_reporter.py --group netsec --sir critical high --kev-only
+python src/psirt_reporter.py --min-cvss 8.0
+
+## NetSec + High Severity + CVSS + KEV
+
+python src/psirt_reporter.py --group netsec --sir critical high --min-cvss 8.0 --kev-only
 
 ---
 
@@ -92,9 +96,10 @@ This tool automates the process by:
 2. Filtering to products of interest
 3. Classifying advisories by product group
 4. Filtering advisories by Cisco Security Impact Rating (SIR)
-5. Checking advisories against the CISA Known Exploited Vulnerabilities catalog
-6. Producing a structured CSV report
-7. Discovering new product names to improve classification rules
+5. Filtering advisories by minimum CVSS score
+6. Checking advisories against the CISA Known Exploited Vulnerabilities catalog
+7. Producing a structured CSV report
+8. Discovering new product names to improve classification rules
 
 ---
 
@@ -126,6 +131,12 @@ High-level workflow of the PSIRT reporter.
    +-----------+----------+
                |
                v
+   +----------------------+
+   | CVSS Filtering       |
+   | Minimum Score        |
+   +-----------+----------+
+               |
+               v
    +------------------------------+
    | KEV Intelligence Enrichment  |
    | CISA KEV Catalog             |
@@ -137,7 +148,7 @@ High-level workflow of the PSIRT reporter.
            | Output        |
            +---------------+
 
-The tool retrieves Cisco advisories, classifies affected products using configurable YAML rules, filters by severity, enriches the results with CISA KEV intelligence, and produces structured CSV output for operational analysis.
+The tool retrieves Cisco advisories, classifies affected products using configurable YAML rules, filters by severity and CVSS score, enriches the results with CISA KEV intelligence, and produces structured CSV output for operational analysis.
 
 ---
 
@@ -178,7 +189,15 @@ Example:
 
 python src/psirt_reporter.py --sir critical high
 
-This allows teams to focus only on the most severe vulnerabilities.
+---
+
+## CVSS-Based Risk Filtering
+
+Security teams can filter advisories using a minimum CVSS score.
+
+Example:
+
+python src/psirt_reporter.py --min-cvss 8.0
 
 ---
 
@@ -194,16 +213,11 @@ Uses Cisco’s OAuth2 client credentials flow to authenticate and query advisori
 
 Uses a YAML configuration file to classify advisories into logical product groups with friendly names.
 
-Example supported products include:
-
-- Adaptive Security Appliance (ASA)
-- Secure Firewall Threat Defense (FTD)
-- Firepower Management Center (FMC)
-- Firepower Extensible Operating System (FXOS)
-
 Product definitions are maintained in:
 
 config/product_groups.yaml
+
+Example product groups include NetSec, Enterprise Networking, Data Center, Wireless, Collaboration, Compute, and Cloud. :contentReference[oaicite:2]{index=2}
 
 ---
 
@@ -236,6 +250,16 @@ Supported values:
 Example:
 
 python src/psirt_reporter.py --sir critical high
+
+---
+
+## CVSS Score Filtering
+
+Advisories can be filtered by **minimum CVSS base score**.
+
+Example:
+
+python src/psirt_reporter.py --min-cvss 8.0
 
 ---
 
@@ -288,10 +312,11 @@ This helps identify new product names and improve classification rules.
 6. Classify advisories by product group  
 7. Filter advisories by selected product groups  
 8. Filter advisories by Cisco severity (SIR)  
-9. Retrieve the CISA KEV catalog  
-10. Optionally filter to KEV advisories only  
-11. Extract unique product names  
-12. Export results to CSV  
+9. Filter advisories by minimum CVSS score  
+10. Retrieve the CISA KEV catalog  
+11. Optionally filter to KEV advisories only  
+12. Extract unique product names  
+13. Export results to CSV  
 
 ---
 
