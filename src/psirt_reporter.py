@@ -95,6 +95,12 @@ def parse_arguments(product_groups):
         help="End date in YYYY-MM-DD format",
     )
 
+    parser.add_argument(
+        "--kev-only",
+        action="store_true",
+        help="Include only advisories with CVEs present in the CISA KEV catalog",
+    )
+
     return parser.parse_args()
 
 
@@ -233,6 +239,17 @@ def filter_advisories_by_group(classified_advisories, selected_groups):
 
     return filtered_advisories
 
+def filter_advisories_by_kev(advisories, kev_cves):
+    """
+    Filter advisories to only those with at least one CVE in the KEV catalog.
+    """
+    filtered_advisories = []
+
+    for advisory in advisories:
+        if is_kev_advisory(advisory, kev_cves):
+            filtered_advisories.append(advisory)
+
+    return filtered_advisories
 
 def fetch_all_advisories(start_date, end_date):
     """
@@ -359,6 +376,7 @@ def print_runtime_settings(args, start_date, end_date):
     print("PSIRT Reporter")
     print("--------------")
     print(f"Groups: {args.group}")
+    print(f"KEV only: {args.kev_only}")
 
     if args.start_date and args.end_date:
         print(f"Start date: {start_date}")
@@ -564,10 +582,17 @@ def main():
     print_sample_classification(advisories, product_groups)
 
     classified_advisories = classify_all_advisories(advisories, product_groups)
+
     filtered_advisories = filter_advisories_by_group(
         classified_advisories,
         args.group,
     )
+
+    if args.kev_only:
+        filtered_advisories = filter_advisories_by_kev(
+            filtered_advisories,
+            kev_cves,
+        )
 
     print_filtered_summary(filtered_advisories)
 
