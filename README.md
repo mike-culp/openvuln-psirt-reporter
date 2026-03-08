@@ -2,7 +2,7 @@
 
 A Python tool for querying Cisco PSIRT advisories using the Cisco OpenVuln API and generating structured CSV reports filtered by configurable product groups.
 
-The tool retrieves Cisco security advisories, classifies them by product family, enriches them with CISA Known Exploited Vulnerabilities (KEV) intelligence, and produces an operationally useful CSV report containing CVEs, severity, affected products, and advisory metadata.
+The tool retrieves Cisco security advisories, classifies them by product family, supports severity filtering using Cisco’s Security Impact Rating (SIR), enriches results with CISA Known Exploited Vulnerabilities (KEV) intelligence, and produces an operationally useful CSV report containing CVEs, severity, affected products, and advisory metadata.
 
 This tool is intended for security engineers, vulnerability management teams, and operations teams who need quick visibility into Cisco security advisories affecting their environment.
 
@@ -41,13 +41,35 @@ This pulls advisories from the last **60 days** and generates a CSV report in:
 
 output/
 
-## Example: NetSec Advisories From the Last 30 Days
+---
+
+# CLI Help
+
+To see all available options and filtering capabilities:
+
+python src/psirt_reporter.py --help
+
+This displays all supported command line options including product group filtering, date ranges, severity filtering, and KEV prioritization.
+
+---
+
+# Example Commands
+
+## NetSec Advisories From the Last 30 Days
 
 python src/psirt_reporter.py --group netsec --days 30
 
-## Example: Only Known Exploited Vulnerabilities
+## Only Known Exploited Vulnerabilities
 
 python src/psirt_reporter.py --kev-only
+
+## Only High or Critical Severity
+
+python src/psirt_reporter.py --sir critical high
+
+## NetSec + High Severity + KEV
+
+python src/psirt_reporter.py --group netsec --sir critical high --kev-only
 
 ---
 
@@ -69,68 +91,65 @@ This tool automates the process by:
 1. Querying Cisco PSIRT advisories
 2. Filtering to products of interest
 3. Classifying advisories by product group
-4. Checking advisories against the CISA Known Exploited Vulnerabilities catalog
-5. Producing a structured CSV report
-6. Discovering new product name patterns to improve classification
-
+4. Filtering advisories by Cisco Security Impact Rating (SIR)
+5. Checking advisories against the CISA Known Exploited Vulnerabilities catalog
+6. Producing a structured CSV report
+7. Discovering new product names to improve classification rules
 
 ---
 
 # Architecture
 
-The following diagram illustrates the high-level workflow of the PSIRT reporter.
+High-level workflow of the PSIRT reporter.
 
++----------------------+
+| Cisco OpenVuln API   |
++----------+-----------+
+           |
+           v
+   +---------------+
+   | Advisory Pull |
+   |  (Python API) |
+   +-------+-------+
+           |
+           v
+   +---------------+
+   | Product       |
+   | Classification|
+   | YAML rules    |
+   +-------+-------+
+           |
+           v
+   +----------------------+
+   | Severity Filtering   |
+   | Cisco SIR            |
+   +-----------+----------+
+               |
+               v
+   +------------------------------+
+   | KEV Intelligence Enrichment  |
+   | CISA KEV Catalog             |
+   +---------------+--------------+
+                   |
+                   v
+           +---------------+
+           | CSV Report    |
+           | Output        |
+           +---------------+
 
-            +----------------------+
-            | Cisco OpenVuln API   |
-            +----------+-----------+
-                       |
-                       v
-               +---------------+
-               | Advisory Pull |
-               |  (Python API) |
-               +-------+-------+
-                       |
-                       v
-               +---------------+
-               | Product       |
-               | Classification|
-               | YAML rules    |
-               +-------+-------+
-                       |
-                       v
-        +------------------------------+
-        | KEV Intelligence Enrichment  |
-        | CISA KEV Catalog             |
-        +---------------+--------------+
-                        |
-                        v
-               +---------------+
-               | Advisory      |
-               | Filtering     |
-               +-------+-------+
-                       |
-                       v
-               +---------------+
-               | CSV Report    |
-               | Output        |
-               +---------------+
-
-The tool retrieves Cisco advisories, classifies affected products using configurable YAML rules, enriches the results with CISA KEV intelligence, and produces structured CSV output for operational analysis.
-
+The tool retrieves Cisco advisories, classifies affected products using configurable YAML rules, filters by severity, enriches the results with CISA KEV intelligence, and produces structured CSV output for operational analysis.
 
 ---
 
 # Security Use Cases
 
-The PSIRT Reporter is designed to support common vulnerability management and security operations workflows.
-
 ## Vulnerability Intelligence Monitoring
 
 Security teams can regularly pull Cisco PSIRT advisories and identify vulnerabilities affecting products deployed in their environment.
 
-Example: python src/psirt_reporter.py --group netsec --days 30
+Example:
 
+python src/psirt_reporter.py --group netsec --days 30
 
 This produces a report containing advisories affecting Cisco network security platforms such as:
 
@@ -145,21 +164,21 @@ This produces a report containing advisories affecting Cisco network security pl
 
 Teams can filter advisories to include only vulnerabilities known to be actively exploited in the wild using the CISA KEV catalog.
 
-Example:python src/psirt_reporter.py --group netsec --days 30 --kev-only
+Example:
 
-This allows engineers to quickly prioritize remediation for vulnerabilities with confirmed exploitation.
+python src/psirt_reporter.py --group netsec --days 30 --kev-only
 
 ---
 
-## Security Advisory Reporting
+## Severity-Based Triage
 
-The generated CSV report can be used for:
+Security teams can prioritize remediation by filtering advisories by Cisco Security Impact Rating (SIR).
 
-- vulnerability tracking
-- patch management workflows
-- security reporting
-- operational review meetings
+Example:
 
+python src/psirt_reporter.py --sir critical high
+
+This allows teams to focus only on the most severe vulnerabilities.
 
 ---
 
@@ -175,12 +194,16 @@ Uses Cisco’s OAuth2 client credentials flow to authenticate and query advisori
 
 Uses a YAML configuration file to classify advisories into logical product groups with friendly names.
 
-Example supported products:
+Example supported products include:
 
 - Adaptive Security Appliance (ASA)
 - Secure Firewall Threat Defense (FTD)
 - Firepower Management Center (FMC)
 - Firepower Extensible Operating System (FXOS)
+
+Product definitions are maintained in:
+
+config/product_groups.yaml
 
 ---
 
@@ -191,21 +214,40 @@ Supports:
 - last **N days**
 - explicit **start and end dates**
 
+Examples:
+
+python src/psirt_reporter.py --days 30
+
+python src/psirt_reporter.py --start-date 2026-01-01 --end-date 2026-03-01
+
+---
+
+## Severity Filtering (Cisco SIR)
+
+Advisories can be filtered using Cisco's **Security Impact Rating (SIR)**.
+
+Supported values:
+
+- critical
+- high
+- medium
+- low
+
+Example:
+
+python src/psirt_reporter.py --sir critical high
+
 ---
 
 ## CISA Known Exploited Vulnerabilities (KEV) Integration
 
 The tool automatically downloads the CISA Known Exploited Vulnerabilities catalog and checks whether any CVEs associated with an advisory are present in the KEV list.
 
-This allows engineers to quickly identify vulnerabilities that are known to be actively exploited in the wild.
-
 ---
 
 ## KEV Filtering
 
 Use the `--kev-only` flag to return only advisories containing CVEs present in the CISA KEV catalog.
-
-This allows teams to prioritize vulnerabilities with confirmed real-world exploitation.
 
 Example:
 
@@ -228,7 +270,11 @@ Generates structured CSV output including:
 
 ## Product Discovery Mode
 
-Extracts all raw product names returned by Cisco to help improve product matching rules.
+The script extracts all raw Cisco product names returned by the API and writes them to:
+
+output/unique_product_names.txt
+
+This helps identify new product names and improve classification rules.
 
 ---
 
@@ -239,152 +285,35 @@ Extracts all raw product names returned by Cisco to help improve product matchin
 3. Resolve query date range  
 4. Authenticate with Cisco OpenVuln API  
 5. Retrieve advisories from OpenVuln API  
-6. Retrieve the CISA Known Exploited Vulnerabilities catalog  
-7. Classify advisories by product group  
-8. Filter advisories based on selected product groups  
-9. Optionally filter to KEV advisories only  
-10. Extract unique product names for analysis  
-11. Export results to CSV  
+6. Classify advisories by product group  
+7. Filter advisories by selected product groups  
+8. Filter advisories by Cisco severity (SIR)  
+9. Retrieve the CISA KEV catalog  
+10. Optionally filter to KEV advisories only  
+11. Extract unique product names  
+12. Export results to CSV  
 
 ---
 
 # External Data Sources
 
-The reporter pulls data from the following sources.
-
 ## Cisco OpenVuln API
 
 https://apix.cisco.com/security/advisories
-
-Used to retrieve Cisco PSIRT advisories.
-
----
 
 ## CISA Known Exploited Vulnerabilities Catalog
 
 https://www.cisa.gov/known-exploited-vulnerabilities-catalog
 
-Used to determine whether advisory CVEs are known to be actively exploited.
-
----
-
-# Prerequisites
-
-## Cisco API Access
-
-Before using this script you must have access to the Cisco OpenVuln API.
-
-You need:
-
-- A registered Cisco developer application
-- A valid **Client ID**
-- A valid **Client Secret**
-
----
-
-## Python Requirements
-
-Python 3.10+ recommended.
-
-Required Python packages:
-
-requests  
-pyyaml  
-
-Install them with:
-
-pip install -r requirements.txt
-
----
-
-# Secure Setup (Environment Variables)
-
-API credentials should never be stored in source code.
-
-Set them as environment variables instead.
-
-macOS / Linux
-
-export OPENVULN_CLIENT_ID="your_client_id"  
-export OPENVULN_CLIENT_SECRET="your_client_secret"
-
-Windows PowerShell
-
-$env:OPENVULN_CLIENT_ID="your_client_id"  
-$env:OPENVULN_CLIENT_SECRET="your_client_secret"
-
----
-
-# Configuration
-
-Product matching rules are defined in:
-
-config/product_groups.yaml
-
-This allows the tool to convert raw Cisco product names into cleaner friendly names used in reports.
-
----
-
-# Usage
-
-Run the reporter:
-
-python src/psirt_reporter.py
-
-Default behavior:
-
-- pulls advisories from the last **60 days**
-- includes **all configured product groups**
-
----
-
-# Command Line Options
-
-## Filter by Product Group
-
-python src/psirt_reporter.py --group netsec
-
-Multiple groups:
-
-python src/psirt_reporter.py --group netsec enterprise
-
-Include all groups:
-
-python src/psirt_reporter.py --group all
-
----
-
-## Query Last N Days
-
-python src/psirt_reporter.py --days 30
-
----
-
-## Query Specific Date Range
-
-python src/psirt_reporter.py --start-date 2026-01-01 --end-date 2026-03-01
-
----
-
-## Show Only Known Exploited Vulnerabilities
-
-Return only advisories containing CVEs listed in the CISA KEV catalog.
-
-python src/psirt_reporter.py --kev-only
-
-Example:
-
-python src/psirt_reporter.py --group netsec --days 30 --kev-only
-
 ---
 
 # Output
 
-All generated files are written to:
+Reports are written to:
 
 output/
 
-Example CSV file:
+Example:
 
 output/psirt_netsec_2026-01-01_to_2026-03-01.csv
 
@@ -396,30 +325,17 @@ output/psirt_netsec_2026-01-01_to_2026-03-01.csv
 |------|-------------|
 | matched_groups | Product groups matched from configuration |
 | friendly_products | Friendly product names |
-| kev | Indicates whether the advisory contains a CVE listed in the CISA KEV catalog (Y/N) |
+| kev | Indicates whether the advisory contains a CVE listed in the CISA KEV catalog |
+| sir | Cisco Security Impact Rating |
 | firstPublished | Advisory publication date |
 | lastUpdated | Advisory last update date |
-| status | Cisco advisory status |
 | advisoryId | Cisco advisory identifier |
-| sir | Cisco severity rating |
 | cvssBaseScore | CVSS base score |
 | cves | Associated CVE identifiers |
 | advisoryTitle | Advisory title |
 | productNames | Raw Cisco product names |
 | publicationUrl | Cisco advisory link |
 | cwe | Weakness classification |
-
----
-
-# Product Name Discovery
-
-The script also produces:
-
-output/unique_product_names.txt
-
-This file lists every unique product name returned by the Cisco API.
-
-It helps improve product matching rules in `product_groups.yaml`.
 
 ---
 
@@ -465,10 +381,10 @@ Verify:
 
 Planned improvements include:
 
-- severity filtering
 - HTML reporting
 - scheduled reporting automation
 - GitHub CI workflows
+- Slack / Teams alerting
 
 ---
 

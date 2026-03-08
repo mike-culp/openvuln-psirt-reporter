@@ -95,6 +95,16 @@ def parse_arguments(product_groups):
     )
 
     parser.add_argument(
+        "--sir",
+        nargs="+",
+        choices=["critical", "high", "medium", "low"],
+        help=(
+            "Filter advisories by Cisco severity rating. "
+            "Allowed values: critical, high, medium, low"
+        ),
+    )
+
+    parser.add_argument(
         "--kev-only",
         action="store_true",
         help="Include only advisories with CVEs present in the CISA KEV catalog",
@@ -238,6 +248,24 @@ def filter_advisories_by_group(classified_advisories, selected_groups):
 
     return filtered_advisories
 
+def filter_advisories_by_sir(advisories, selected_sirs):
+    """
+    Filter advisories by Cisco severity rating (sir).
+    """
+    if not selected_sirs:
+        return advisories
+
+    selected_sir_set = {sir.lower() for sir in selected_sirs}
+    filtered_advisories = []
+
+    for advisory in advisories:
+        advisory_sir = str(advisory.get("sir", "")).strip().lower()
+
+        if advisory_sir in selected_sir_set:
+            filtered_advisories.append(advisory)
+
+    return filtered_advisories
+
 def filter_advisories_by_kev(advisories, kev_cves):
     """
     Filter advisories to only those with at least one CVE in the KEV catalog.
@@ -375,6 +403,7 @@ def print_runtime_settings(args, start_date, end_date):
     print("PSIRT Reporter")
     print("--------------")
     print(f"Groups: {args.group}")
+    print(f"SIR filter: {args.sir if args.sir else 'all'}")
     print(f"KEV only: {args.kev_only}")
 
     if args.start_date and args.end_date:
@@ -585,6 +614,11 @@ def main():
     filtered_advisories = filter_advisories_by_group(
         classified_advisories,
         args.group,
+    )
+
+    filtered_advisories = filter_advisories_by_sir(
+        filtered_advisories,
+        args.sir,
     )
 
     if args.kev_only:
