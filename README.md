@@ -41,6 +41,24 @@ $env:OPENVULN_CLIENT_ID="your_client_id"
 $env:OPENVULN_CLIENT_SECRET="your_client_secret"
 ```
 
+## Obtain Cisco OpenVuln API Credentials
+
+This tool requires credentials for the Cisco OpenVuln API.
+
+To obtain them:
+
+1. Visit the Cisco API Console  
+   https://apiconsole.cisco.com
+
+2. Create a new application.
+
+3. Enable the **Cisco PSIRT / OpenVuln API**.
+
+4. Copy the generated **Client ID** and **Client Secret**.
+
+5. Set them as environment variables before running the script.
+
+
 ## 4. Run the Reporter
 
 ```
