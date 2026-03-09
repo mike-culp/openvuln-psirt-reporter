@@ -1073,6 +1073,9 @@ def main():
         )
 
     print_filtered_summary(filtered_advisories)
+    if not filtered_advisories:
+        print("No advisories matched your filters. Exiting.")
+    sys.exit(0)
 
     unique_product_names = extract_unique_raw_product_names(filtered_advisories)
 
