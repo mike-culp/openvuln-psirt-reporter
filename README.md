@@ -465,61 +465,81 @@ The `main` branch represents the latest stable version of the tool, while the `d
 
 The PSIRT Reporter is actively evolving. Planned improvements are grouped by major version.
 
+
 ---
 
-## v2 – Architecture and Workflow Improvements
+# Roadmap
 
-The focus of v2 is improving maintainability and usability of the tool.
+Future development will focus on improving architecture, enriching advisory data with additional Cisco intelligence sources, and improving product classification workflows.
 
-### Modular Script Structure
+## v2 – Modular Architecture & Bug API Integration
 
-The current single-file script will be refactored into multiple modules to improve readability and maintainability.
+Refactor the script into modular components and introduce Cisco Bug API support.
 
-Example structure:
+Planned improvements:
 
-```
+* Refactor the monolithic script into modular components
+* Introduce dedicated API clients for OpenVuln and Cisco Bug APIs
+* Establish shared data models between OpenVuln advisories and Bug API results
+* Improve maintainability and testability of the codebase
+
+Potential module structure:
+
 src/
-    psirt_reporter.py
-    api.py
-    classification.py
-    filters.py
-    reporting.py
-```
+cli.py
+openvuln_client.py
+bug_api_client.py
+classification.py
+filters.py
+kev.py
+reporting_csv.py
+reporting_html.py
+product_discovery.py
+models.py
+main.py
 
-This will separate the API logic, classification engine, filtering logic, and reporting functionality.
-
----
-
-### Guided Product Classification
-
-When the script encounters previously unseen Cisco product names returned by the API, it will optionally prompt the user to classify them into an existing product group.
-
-Example workflow:
-
-```
-New product detected: Cisco Example Platform
-
-Add this product to a group?
-
-1) netsec
-2) enterprise
-3) datacenter
-4) compute
-5) wireless
-6) collab
-7) cloud
-8) skip
-```
-
-The tool will then update `product_groups.yaml` accordingly, simplifying long-term maintenance of classification rules.
+This refactor will make it easier to extend the tool with additional data sources and reporting features.
 
 ---
 
-### KEV Catalog Caching
+## v2.1 – Defect Enrichment
 
-The CISA KEV catalog will be cached locally for a configurable period (for example 24 hours) to reduce repeated external downloads and improve performance during frequent runs.
+Enhance advisory intelligence by correlating CVEs with Cisco defect data.
+
+Planned improvements:
+
+* Query the Cisco Bug API using CVE identifiers
+* Extract Cisco defect IDs associated with vulnerabilities
+* Retrieve affected version information where available
+* Retrieve fixed version information where available
+* Enrich advisory records with defect metadata
+* Add defect fields to CSV and HTML reports
+
+Example report fields:
+
+* `bugIds`
+* `affectedVersions`
+* `fixedVersions`
+
+This enhancement will allow security teams to quickly understand which Cisco bugs correspond to specific vulnerabilities and which software versions contain fixes.
 
 ---
+
+## v2.2 – Guided Product Integration
+
+Improve long-term maintainability of product classification rules.
+
+Planned improvements:
+
+* Detect Cisco product names returned by the API that are not currently classified
+* Provide an interactive workflow to assist users in adding new products
+* Guide users in updating `product_groups.yaml` safely
+* Reduce manual effort required to maintain classification rules as Cisco product names evolve
+
+This feature will help ensure the tool continues to classify advisories accurately as new Cisco products are introduced.
+
+---
+
 
 ## v3 – Reporting and Visualization Improvements
 
