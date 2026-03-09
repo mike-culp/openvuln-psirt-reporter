@@ -446,3 +446,110 @@ https://apix.cisco.com/security/advisories
 ## CISA Known Exploited Vulnerabilities Catalog
 
 https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+
+
+---
+
+# Roadmap / Future Enhancements
+
+The PSIRT Reporter is actively evolving. Planned improvements are grouped by major version.
+
+---
+
+## v2 – Architecture and Workflow Improvements
+
+The focus of v2 is improving maintainability and usability of the tool.
+
+### Modular Script Structure
+
+The current single-file script will be refactored into multiple modules to improve readability and maintainability.
+
+Example structure:
+
+```
+src/
+    psirt_reporter.py
+    api.py
+    classification.py
+    filters.py
+    reporting.py
+```
+
+This will separate the API logic, classification engine, filtering logic, and reporting functionality.
+
+---
+
+### Guided Product Classification
+
+When the script encounters previously unseen Cisco product names returned by the API, it will optionally prompt the user to classify them into an existing product group.
+
+Example workflow:
+
+```
+New product detected: Cisco Example Platform
+
+Add this product to a group?
+
+1) netsec
+2) enterprise
+3) datacenter
+4) compute
+5) wireless
+6) collab
+7) cloud
+8) skip
+```
+
+The tool will then update `product_groups.yaml` accordingly, simplifying long-term maintenance of classification rules.
+
+---
+
+### KEV Catalog Caching
+
+The CISA KEV catalog will be cached locally for a configurable period (for example 24 hours) to reduce repeated external downloads and improve performance during frequent runs.
+
+---
+
+## v3 – Reporting and Visualization Improvements
+
+The focus of v3 will be improving the HTML reporting experience to provide a more dashboard-like view of PSIRT advisory data.
+
+Planned enhancements include:
+
+### Severity Visualization
+
+Color-coded severity indicators for Cisco Security Impact Ratings (SIR):
+
+- Critical – red
+- High – orange
+- Medium – yellow
+- Low – green
+
+---
+
+### KEV Highlighting
+
+Advisories containing Known Exploited Vulnerabilities will be visually highlighted to improve triage and prioritization.
+
+---
+
+### Advisory Statistics Dashboard
+
+The HTML report will include visual summary components such as:
+
+- severity distribution charts
+- advisory counts by product group
+- advisory counts by product
+
+Charts may be implemented using lightweight JavaScript libraries such as Chart.js.
+
+---
+
+### Improved HTML Layout
+
+The HTML report will evolve into a more structured dashboard including:
+
+- summary cards
+- visual statistics
+- improved advisory tables
+- better styling and layout
