@@ -1,11 +1,12 @@
 import argparse
 import csv
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import requests
 import yaml
 import html
+import sys
 
 
 # ============================================================
@@ -174,7 +175,7 @@ def resolve_date_range(args):
         start_date = datetime.strptime(args.start_date, "%Y-%m-%d").date()
         end_date = datetime.strptime(args.end_date, "%Y-%m-%d").date()
     else:
-        end_date = datetime.utcnow().date()
+        end_date = datetime.now(timezone.utc).date()
         start_date = end_date - timedelta(days=args.days)
 
     if start_date > end_date:
@@ -422,9 +423,13 @@ def fetch_all_advisories(start_date, end_date):
 
 def fetch_kev_catalog():
     """Fetch the CISA Known Exploited Vulnerabilities catalog."""
-    response = requests.get(KEV_CATALOG_URL, timeout=30)
-    response.raise_for_status()
-    return response.json()
+    try:
+        response = requests.get(KEV_CATALOG_URL, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException as e:
+        print(f"Warning: Could not fetch KEV catalog: {e}")
+        return {"vulnerabilities": []}
 
 
 def extract_kev_cves(kev_catalog):
@@ -600,6 +605,7 @@ def print_unique_product_names(product_names):
 def write_unique_product_names(product_names):
     """Write unique product names to a text file for review."""
     OUTPUT_DIR.mkdir(exist_ok=True)
+
     output_file = OUTPUT_DIR / "unique_product_names.txt"
 
     with open(output_file, "w", encoding="utf-8") as file_handle:
@@ -638,6 +644,12 @@ def write_advisories_to_csv(advisories, selected_groups, start_date, end_date, k
     base_name = build_output_base_name(selected_groups, start_date, end_date)
     file_name = f"{base_name}.csv"
     output_file = OUTPUT_DIR / file_name
+
+    advisories = sorted(
+    advisories,
+    key=lambda a: float(a.get("cvssBaseScore") or 0),
+    reverse=True,
+    )
 
     fieldnames = [
         "matched_groups",
@@ -729,7 +741,12 @@ def write_advisories_to_html(advisories, selected_groups, start_date, end_date, 
     file_name = f"{base_name}.html"
     output_file = OUTPUT_DIR / file_name
 
-    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    advisories = sorted(
+    advisories,
+    key=lambda a: float(a.get("cvssBaseScore") or 0),
+    reverse=True,
+)
 
     total_count = len(advisories)
     kev_count = 0
@@ -744,7 +761,7 @@ def write_advisories_to_html(advisories, selected_groups, start_date, end_date, 
         if any(cve in kev_cves for cve in cves):
             kev_count += 1
 
-        sir = (advisory.get("sir") or "").strip()
+        sir = (advisory.get("sir") or "").strip().title()
         if sir in sir_counts:
             sir_counts[sir] += 1
 
@@ -994,7 +1011,6 @@ def write_advisories_to_html(advisories, selected_groups, start_date, end_date, 
 
 
 def main():
-    validate_credentials()
 
     product_groups = load_product_groups()
     args = parse_arguments(product_groups)
@@ -1006,14 +1022,15 @@ def main():
         invalid_groups = [g for g in args.group if g not in available_groups]
 
         if invalid_groups:
-            raise ValueError(
-                f"Unknown group(s): {', '.join(invalid_groups)}. "
+            print(
+                f"Error: Unknown group(s): {', '.join(invalid_groups)}. "
                 f"Valid groups: {', '.join(sorted(available_groups))}"
             )
+            sys.exit(1)
 
     start_date, end_date = resolve_date_range(args)
 
-        # Validate CVSS threshold
+    # Validate CVSS threshold
     if args.min_cvss is not None:
         if not 0.0 <= args.min_cvss <= 10.0:
             raise ValueError(
