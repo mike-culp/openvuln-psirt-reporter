@@ -440,9 +440,24 @@ def extract_kev_cves(kev_catalog):
     return kev_cves
 
 
+def normalize_cves(cves):
+    """Normalize advisory CVE data into a clean list of CVE strings."""
+    if not cves:
+        return []
+
+    if isinstance(cves, list):
+        return [str(cve).strip() for cve in cves if str(cve).strip()]
+
+    if isinstance(cves, str):
+        cleaned = cves.strip()
+        return [cleaned] if cleaned else []
+
+    return [str(cves).strip()] if str(cves).strip() else []
+
+
 def is_kev_advisory(advisory, kev_cves):
     """Return True if any CVE in the advisory is present in the KEV catalog."""
-    advisory_cves = advisory.get("cves", [])
+    advisory_cves = normalize_cves(advisory.get("cves"))
 
     if not advisory_cves:
         return False
@@ -724,9 +739,7 @@ def write_advisories_to_html(advisories, selected_groups, start_date, end_date, 
     product_counts = {}
 
     for advisory in advisories:
-        cves = advisory.get("cves", []) or []
-        if isinstance(cves, str):
-            cves = [cves]
+        cves = normalize_cves(advisory.get("cves"))
 
         if any(cve in kev_cves for cve in cves):
             kev_count += 1
@@ -796,11 +809,8 @@ def write_advisories_to_html(advisories, selected_groups, start_date, end_date, 
         last_updated = advisory.get("lastUpdated", "")
         publication_url = advisory.get("publicationUrl", "")
 
-        cves = advisory.get("cves", []) or []
-        if isinstance(cves, list):
-            cves_display = ", ".join(cves)
-        else:
-            cves_display = str(cves)
+        cves = normalize_cves(advisory.get("cves"))
+        cves_display = ", ".join(cves)
 
         matched_groups = advisory.get("matched_groups", []) or []
         if isinstance(matched_groups, list):
@@ -814,7 +824,7 @@ def write_advisories_to_html(advisories, selected_groups, start_date, end_date, 
         else:
             friendly_products_display = str(friendly_products)
 
-        kev_flag = "Yes" if any(cve in kev_cves for cve in cves if cve) else "No"
+        kev_flag = "Yes" if is_kev_advisory(advisory, kev_cves) else "No"
 
         advisory_id_escaped = html.escape(str(advisory_id))
         if publication_url:
@@ -988,7 +998,28 @@ def main():
 
     product_groups = load_product_groups()
     args = parse_arguments(product_groups)
+
+    # Validate requested groups
+    available_groups = set(product_groups.keys())
+
+    if "all" not in args.group:
+        invalid_groups = [g for g in args.group if g not in available_groups]
+
+        if invalid_groups:
+            raise ValueError(
+                f"Unknown group(s): {', '.join(invalid_groups)}. "
+                f"Valid groups: {', '.join(sorted(available_groups))}"
+            )
+
     start_date, end_date = resolve_date_range(args)
+
+        # Validate CVSS threshold
+    if args.min_cvss is not None:
+        if not 0.0 <= args.min_cvss <= 10.0:
+            raise ValueError(
+                f"Invalid --min-cvss value: {args.min_cvss}. "
+                "CVSS scores must be between 0.0 and 10.0."
+            )
 
     print_runtime_settings(args, start_date, end_date)
 
