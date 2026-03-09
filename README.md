@@ -450,6 +450,17 @@ https://www.cisa.gov/known-exploited-vulnerabilities-catalog
 
 ---
 
+# Development Workflow
+
+This repository uses a simple two-branch workflow:
+
+- `main` – stable, release-ready code
+- `dev` – active development for upcoming changes and new features
+
+The `main` branch represents the latest stable version of the tool, while the `dev` branch contains ongoing development work that will be merged into `main` once tested and ready for release.
+
+---
+
 # Roadmap / Future Enhancements
 
 The PSIRT Reporter is actively evolving. Planned improvements are grouped by major version.
