@@ -1,20 +1,20 @@
 import sys
 
-from api import (
+from src.api import (
     extract_kev_cves,
     fetch_all_advisories,
     fetch_kev_catalog,
 )
-from classification import classify_all_advisories
-from cli import parse_arguments, resolve_date_range
-from config import load_product_groups
-from filters import (
+from src.classification import classify_all_advisories
+from src.cli import parse_arguments, resolve_date_range
+from src.config import load_product_groups
+from src.filters import (
     filter_advisories_by_cvss,
     filter_advisories_by_group,
     filter_advisories_by_kev,
     filter_advisories_by_sir,
 )
-from reporting import (
+from src.reporting import (
     extract_unique_raw_product_names,
     print_advisory_summary,
     print_filtered_summary,

@@ -1,10 +1,9 @@
 import csv
 import html
 from datetime import datetime, timezone
-
-from api import is_kev_advisory, normalize_cves
-from classification import classify_advisory_products
-from config import OUTPUT_DIR
+from src.api import is_kev_advisory, normalize_cves
+from src.classification import classify_advisory_products
+from src.config import OUTPUT_DIR
 
 
 def extract_unique_raw_product_names(advisories):

@@ -1,4 +1,4 @@
-from api import is_kev_advisory
+from src.api import is_kev_advisory
 
 
 def filter_advisories_by_group(classified_advisories, selected_groups):

@@ -1,4 +1,4 @@
-from workflow import run
+from src.workflow import run
 
 
 if __name__ == "__main__":

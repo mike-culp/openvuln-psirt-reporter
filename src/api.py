@@ -1,6 +1,6 @@
 import requests
 
-from config import (
+from src.config import (
     ADVISORIES_URL,
     CLIENT_ID,
     CLIENT_SECRET,
