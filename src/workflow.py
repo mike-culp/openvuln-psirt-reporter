@@ -26,6 +26,7 @@ from src.reporting import (
     write_advisories_to_html,
     write_unique_product_names,
 )
+from src.bug_enrichment import enrich_advisories_with_bug_details
 
 
 def run():
@@ -94,6 +95,8 @@ def run():
     if not filtered_advisories:
         print("No advisories matched your filters. Exiting.")
         sys.exit(0)
+
+    filtered_advisories = enrich_advisories_with_bug_details(filtered_advisories)
 
     unique_product_names = extract_unique_raw_product_names(filtered_advisories)
 
