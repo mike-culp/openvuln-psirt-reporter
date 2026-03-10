@@ -61,15 +61,50 @@ To obtain them:
 
 ## 4. Run the Reporter
 
+Run the tool from the root of the repository.
+
+### Recommended (module execution)
+
+The recommended way to run the tool is using Python's module execution:
+
+```
+python -m src.main
+```
+
+Example:
+
+```
+python -m src.main --group netsec --days 30
+```
+
+Example with HTML report output:
+
+```
+python -m src.main --group netsec --days 30 --html
+```
+
+### Legacy script entrypoint
+
+For convenience and backwards compatibility, the tool can also be run directly via the script entrypoint:
+
 ```
 python src/psirt_reporter.py
 ```
 
-This pulls advisories from the last **60 days** and generates a CSV report in:
+Example:
+
+```
+python src/psirt_reporter.py --group netsec --days 30 --html
+```
+
+Both methods produce identical results. The module execution method is preferred for long-term compatibility with Python package layouts.
+
+Generated reports are written to:
 
 ```
 output/
 ```
+
 
 ---
 
