@@ -55,11 +55,6 @@ groups:
           - "Secure Endpoint Private Cloud Console"
         exclude: []
 
-      Secure Network Analytics:
-        match:
-          - "Secure Network Analytics"
-        exclude: []
-
       Duo:
         match:
           - "Duo"
@@ -431,3 +426,26 @@ groups:
           - "Ultra"
         exclude:
           - "Ultra-Reliable Wireless Backhaul"
+  observability:
+    display_name: Observability
+    products:
+      ThousandEyes:
+        match:
+          - "ThousandEyes"
+        exclude: []
+
+      Splunk:
+        match:
+          - "Splunk"
+        exclude: []
+
+      AppD:
+        match:
+          - "AppDynamics"
+        exclude: []
+
+      SNA:
+        match:
+          - "Secure Network Analytics"
+          - "Stealthwatch"
+        exclude: []
