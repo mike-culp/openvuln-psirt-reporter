@@ -26,9 +26,9 @@ import requests
 
 
 BUG_API_TOKEN_URL = "https://id.cisco.com/oauth2/default/v1/token"
-BUG_API_BASE_URL = "https://api.cisco.com/bug/v2.0/bugs"
-BUG_API_CLIENT_ID = os.getenv("BUG_API_CLIENT_ID")
-BUG_API_CLIENT_SECRET = os.getenv("BUG_API_CLIENT_SECRET")
+BUG_API_BASE_URL = "https://apix.cisco.com/bug/v2.0/bugs"
+BUG_API_CLIENT_ID = os.getenv("BUG_API_CLIENT_ID") or os.getenv("CISCO_CLIENT_ID")
+BUG_API_CLIENT_SECRET = os.getenv("BUG_API_CLIENT_SECRET") or os.getenv("CISCO_CLIENT_SECRET")
 
 # Keep this conservative. 0.6 sec ~= 1.67 calls/sec.
 BUG_API_MIN_INTERVAL_SECONDS = 0.6
@@ -102,6 +102,8 @@ def chunked(items: Iterable[str], size: int) -> List[List[str]]:
 def normalize_bug_ids(bug_ids: Iterable[str]) -> List[str]:
     """
     Normalize, deduplicate, and sort bug IDs.
+
+    Cisco Bug API expects IDs like CSCsr80503, not fully uppercased values.
     """
     normalized = set()
 
@@ -109,9 +111,16 @@ def normalize_bug_ids(bug_ids: Iterable[str]) -> List[str]:
         if not bug_id:
             continue
 
-        cleaned = str(bug_id).strip().upper()
-        if cleaned:
-            normalized.add(cleaned)
+        cleaned = str(bug_id).strip()
+
+        if not cleaned:
+            continue
+
+        # Convert CSCWI23613 -> CSCwi23613
+        if cleaned.upper().startswith("CSC") and len(cleaned) >= 6:
+            cleaned = "CSC" + cleaned[3:5].lower() + cleaned[5:]
+
+        normalized.add(cleaned)
 
     return sorted(normalized)
 
@@ -153,20 +162,28 @@ def extract_bug_rows(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
 def normalize_bug_record(record: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normalize one Bug API record into a stable internal shape.
-
-    Keep this lightweight for v1. We can expand once we inspect
-    real responses from your account.
     """
+
     bug_id = (
-        record.get("bugId")
-        or record.get("bug_id")
+        record.get("bug_id")
+        or record.get("bugId")
         or record.get("id")
         or record.get("identifier")
         or ""
     )
 
-    status = record.get("status") or ""
-    severity = record.get("severity") or ""
+    status = (
+        record.get("status")
+        or record.get("bugStatus")
+        or ""
+    )
+
+    severity = (
+        record.get("severity")
+        or record.get("bugSeverity")
+        or ""
+    )
+
     headline = (
         record.get("headline")
         or record.get("title")
@@ -175,31 +192,38 @@ def normalize_bug_record(record: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     affected_versions = (
-        record.get("affectedVersions")
+        record.get("known_affected_releases")
+        or record.get("affectedVersions")
         or record.get("affected_versions")
         or record.get("knownAffectedReleases")
         or []
     )
 
     fixed_versions = (
-        record.get("fixedVersions")
+        record.get("known_fixed_releases")
+        or record.get("fixedVersions")
         or record.get("fixed_versions")
         or record.get("knownFixedReleases")
         or []
     )
 
     if isinstance(affected_versions, str):
-        affected_versions = [affected_versions]
+        affected_versions = affected_versions.split()
+    elif not isinstance(affected_versions, list):
+        affected_versions = []
+
     if isinstance(fixed_versions, str):
-        fixed_versions = [fixed_versions]
+        fixed_versions = fixed_versions.split()
+    elif not isinstance(fixed_versions, list):
+        fixed_versions = []
 
     return {
         "bug_id": str(bug_id).strip().upper(),
-        "status": status,
-        "severity": severity,
-        "headline": headline,
-        "affected_versions": [str(v).strip() for v in affected_versions if v],
-        "fixed_versions": [str(v).strip() for v in fixed_versions if v],
+        "status": str(status).strip(),
+        "severity": str(severity).strip(),
+        "headline": str(headline).strip(),
+        "affected_versions": [str(v).strip() for v in affected_versions if str(v).strip()],
+        "fixed_versions": [str(v).strip() for v in fixed_versions if str(v).strip()],
         "raw": record,
     }
 
@@ -267,6 +291,7 @@ def fetch_bug_details_by_ids(
     Fetch bug details for all unique bug IDs.
 
     Batching and throttling are built in to respect the Bug API limit.
+    If one batch fails, continue with the rest and keep partial results.
     """
     normalized_bug_ids = normalize_bug_ids(bug_ids)
 
@@ -276,12 +301,25 @@ def fetch_bug_details_by_ids(
     token = get_bug_api_token()
     results: Dict[str, Dict[str, Any]] = {}
 
-    for index, batch in enumerate(chunked(normalized_bug_ids, BUG_API_BATCH_SIZE)):
-        batch_results = fetch_bug_details_batch(batch, token)
-        results.update(batch_results)
+    total_batches = (len(normalized_bug_ids) + BUG_API_BATCH_SIZE - 1) // BUG_API_BATCH_SIZE
 
-        # Sleep after each batch except the last.
-        if index < (len(normalized_bug_ids) - 1) // BUG_API_BATCH_SIZE:
+    for index, batch in enumerate(chunked(normalized_bug_ids, BUG_API_BATCH_SIZE)):
+        joined_bug_ids = ",".join(batch)
+
+        try:
+            batch_results = fetch_bug_details_batch(batch, token)
+            results.update(batch_results)
+            print(
+                f"Bug API batch {index + 1}/{total_batches}: "
+                f"retrieved {len(batch_results)} records for [{joined_bug_ids}]"
+            )
+        except BugApiError as error:
+            print(
+                f"Warning: Bug API batch {index + 1}/{total_batches} failed "
+                f"for [{joined_bug_ids}]. Continuing. Reason: {error}"
+            )
+
+        if index < total_batches - 1:
             time.sleep(sleep_seconds)
 
     return results

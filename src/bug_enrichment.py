@@ -128,29 +128,47 @@ def enrich_advisories_with_bug_details(
         print("Fetching Bug API details...")
         bug_lookup = fetch_bug_details_by_ids(unique_bug_ids)
         print(f"Bug API details retrieved for: {len(bug_lookup)} bug IDs")
-    except BugApiError as error:
-        print(f"Warning: Bug API enrichment skipped. Using advisory bug IDs only. Reason: {error}")
-        bug_lookup = {}
 
-    for advisory in advisories:
-        advisory_bug_ids = normalize_bug_ids(advisory.get("bugIDs"))
-        bug_records = [
-            bug_lookup[bug_id]
-            for bug_id in advisory_bug_ids
-            if bug_id in bug_lookup
-        ]
+        # DEBUG
+        print("DEBUG bug_lookup sample:")
+        sample_items = list(bug_lookup.items())[:5]
+        for key, value in sample_items:
+            print(key, value)
 
-        advisory["bugIDs_normalized"] = advisory_bug_ids
-        advisory["bug_details"] = bug_records
-        advisory["bug_statuses"] = flatten_bug_values(bug_records, "status")
-        advisory["bug_severities"] = flatten_bug_values(bug_records, "severity")
-        advisory["affected_versions"] = flatten_bug_values(
-            bug_records,
-            "affected_versions",
-        )
-        advisory["fixed_versions"] = flatten_bug_values(
-            bug_records,
-            "fixed_versions",
-        )
+        for advisory in advisories:
+            advisory_bug_ids = normalize_bug_ids(advisory.get("bugIDs"))
+
+            bug_records = [
+                bug_lookup[bug_id]
+                for bug_id in advisory_bug_ids
+                if bug_id in bug_lookup
+            ]
+
+            print("DEBUG advisory bug IDs:", advisory_bug_ids)
+            print("DEBUG matched bug records:", bug_records)
+
+            advisory["bugIDs_normalized"] = advisory_bug_ids
+            advisory["bug_details"] = bug_records
+            advisory["bug_statuses"] = flatten_bug_values(bug_records, "status")
+            advisory["bug_severities"] = flatten_bug_values(bug_records, "severity")
+            advisory["affected_versions"] = flatten_bug_values(
+                bug_records,
+                "affected_versions",
+            )
+            advisory["fixed_versions"] = flatten_bug_values(
+                bug_records,
+                "fixed_versions",
+            )
+
+    except BugApiError as e:
+        print(f"Warning: Bug API enrichment skipped: {e}")
+
+        for advisory in advisories:
+            advisory["bugIDs_normalized"] = normalize_bug_ids(advisory.get("bugIDs"))
+            advisory["bug_details"] = []
+            advisory["bug_statuses"] = []
+            advisory["bug_severities"] = []
+            advisory["affected_versions"] = []
+            advisory["fixed_versions"] = []
 
     return advisories
