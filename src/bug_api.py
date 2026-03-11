@@ -17,12 +17,14 @@ Notes:
 """
 
 from __future__ import annotations
+from src.logging_utils import verbose_print
 
 import os
 import time
 from typing import Any, Dict, Iterable, List
-
 import requests
+
+
 
 
 BUG_API_TOKEN_URL = "https://id.cisco.com/oauth2/default/v1/token"
@@ -62,6 +64,7 @@ def get_bug_api_token() -> str:
     """
     validate_bug_api_config()
 
+    print("Getting Bug API token...")
     response = requests.post(
         BUG_API_TOKEN_URL,
         data={"grant_type": "client_credentials"},
@@ -269,10 +272,10 @@ def fetch_bug_details_batch(
     rows = extract_bug_rows(payload)
 
     if rows:
-        print()
-        print("DEBUG: First Bug API record:")
-        print(rows[0])
-        print()
+        verbose_print()
+        verbose_print("DEBUG: First Bug API record:")
+        verbose_print(rows[0])
+        verbose_print()
 
     normalized: Dict[str, Dict[str, Any]] = {}
     for row in rows:
@@ -296,9 +299,12 @@ def fetch_bug_details_by_ids(
     normalized_bug_ids = normalize_bug_ids(bug_ids)
 
     if not normalized_bug_ids:
+        verbose_print("No bug IDs found for enrichment.")
         return {}
 
     token = get_bug_api_token()
+    print("Getting defect data...")
+
     results: Dict[str, Dict[str, Any]] = {}
 
     total_batches = (len(normalized_bug_ids) + BUG_API_BATCH_SIZE - 1) // BUG_API_BATCH_SIZE
@@ -307,9 +313,10 @@ def fetch_bug_details_by_ids(
         joined_bug_ids = ",".join(batch)
 
         try:
+            verbose_print(f"Fetching Bug API batch {index + 1}/{total_batches}")
             batch_results = fetch_bug_details_batch(batch, token)
             results.update(batch_results)
-            print(
+            verbose_print(
                 f"Bug API batch {index + 1}/{total_batches}: "
                 f"retrieved {len(batch_results)} records for [{joined_bug_ids}]"
             )

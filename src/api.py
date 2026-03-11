@@ -8,6 +8,8 @@ from src.config import (
     TOKEN_URL,
 )
 
+from src.logging_utils import verbose_print
+
 
 def validate_credentials():
     if not CLIENT_ID or not CLIENT_SECRET:
@@ -29,11 +31,11 @@ def get_access_token():
         timeout=30,
     )
 
-    print(f"Token status: {response.status_code}")
+    verbose_print(f"OpenVuln token status: {response.status_code}")
 
     if response.status_code != 200:
-        print("Token response:")
-        print(response.text)
+        verbose_print("OpenVuln token response:")
+        verbose_print(response.text)
 
     response.raise_for_status()
     return response.json()["access_token"]
@@ -43,6 +45,7 @@ def fetch_all_advisories(start_date, end_date):
     """
     Fetch all advisories updated within the requested date range.
     """
+    print("Getting OpenVuln OAuth token...")
     token = get_access_token()
 
     headers = {
@@ -62,6 +65,7 @@ def fetch_all_advisories(start_date, end_date):
     all_advisories = []
     current_page = 1
 
+    print("Getting advisories from OpenVuln...")
     while True:
         query_params["pageIndex"] = current_page
 
@@ -72,11 +76,13 @@ def fetch_all_advisories(start_date, end_date):
             timeout=30,
         )
 
-        print(f"Advisory status for page {current_page}: {response.status_code}")
+        verbose_print(
+            f"OpenVuln advisory status for page {current_page}: {response.status_code}"
+        )
 
         if response.status_code != 200:
-            print("Advisory response:")
-            print(response.text)
+            verbose_print("Advisory response:")
+            verbose_print(response.text)
 
         response.raise_for_status()
 
@@ -86,8 +92,8 @@ def fetch_all_advisories(start_date, end_date):
 
         all_advisories.extend(advisories)
 
-        print(f"Paging for page {current_page}: {paging_info}")
-        print(f"Advisories returned on page {current_page}: {len(advisories)}")
+        verbose_print(f"Paging for page {current_page}: {paging_info}")
+        verbose_print(f"Advisories returned on page {current_page}: {len(advisories)}")
 
         if paging_info.get("next") == "NA":
             break

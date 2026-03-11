@@ -81,6 +81,12 @@ def parse_arguments(product_groups):
         help="Generate an HTML report in addition to the CSV report",
     )
 
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose console logging for API requests and debugging output",
+    )
+
     return parser.parse_args()
 
 

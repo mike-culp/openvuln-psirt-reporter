@@ -15,7 +15,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List
 
-from src.bug_api import BugApiError, fetch_bug_details_by_ids
+from src.bug_api import BugApiError, fetch_bug_details_by_ids, verbose_print
+
+from src.logging_utils import verbose_print
 
 
 def normalize_bug_ids(value: Any) -> List[str]:
@@ -111,8 +113,8 @@ def enrich_advisories_with_bug_details(
     """
     unique_bug_ids = extract_unique_bug_ids(advisories)
 
-    print()
-    print(f"Unique bug IDs found in filtered advisories: {len(unique_bug_ids)}")
+    verbose_print()
+    verbose_print(f"Unique bug IDs found in filtered advisories: {len(unique_bug_ids)}")
 
     if not unique_bug_ids:
         for advisory in advisories:
@@ -125,15 +127,14 @@ def enrich_advisories_with_bug_details(
         return advisories
 
     try:
-        print("Fetching Bug API details...")
         bug_lookup = fetch_bug_details_by_ids(unique_bug_ids)
-        print(f"Bug API details retrieved for: {len(bug_lookup)} bug IDs")
+        verbose_print(f"Bug API details retrieved for: {len(bug_lookup)} bug IDs")
 
         # DEBUG
-        print("DEBUG bug_lookup sample:")
+        verbose_print("DEBUG bug_lookup sample:")
         sample_items = list(bug_lookup.items())[:5]
         for key, value in sample_items:
-            print(key, value)
+            verbose_print(key, value)
 
         for advisory in advisories:
             advisory_bug_ids = normalize_bug_ids(advisory.get("bugIDs"))
@@ -144,8 +145,8 @@ def enrich_advisories_with_bug_details(
                 if bug_id in bug_lookup
             ]
 
-            print("DEBUG advisory bug IDs:", advisory_bug_ids)
-            print("DEBUG matched bug records:", bug_records)
+            verbose_print("DEBUG advisory bug IDs:", advisory_bug_ids)
+            verbose_print("DEBUG matched bug records:", bug_records)
 
             advisory["bugIDs_normalized"] = advisory_bug_ids
             advisory["bug_details"] = bug_records

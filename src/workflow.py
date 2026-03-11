@@ -27,11 +27,14 @@ from src.reporting import (
     write_unique_product_names,
 )
 from src.bug_enrichment import enrich_advisories_with_bug_details
+from src.logging_utils import set_verbose
+from src.logging_utils import set_verbose, verbose_print
 
 
 def run():
     product_groups = load_product_groups()
     args = parse_arguments(product_groups)
+    set_verbose(args.verbose)
 
     available_groups = set(product_groups.keys())
 
@@ -58,7 +61,7 @@ def run():
 
     advisories = fetch_all_advisories(start_date, end_date)
 
-    print("Fetching CISA KEV catalog...")
+    print("Getting CISA KEV catalog...")
     kev_catalog = fetch_kev_catalog()
     kev_cves = extract_kev_cves(kev_catalog)
     print(f"Loaded KEV CVEs: {len(kev_cves)}")
@@ -100,11 +103,14 @@ def run():
 
     unique_product_names = extract_unique_raw_product_names(filtered_advisories)
 
-    print()
-    print(f"Total unique product names discovered: {len(unique_product_names)}")
-    print("Showing the first 50 unique product names alphabetically:")
+    if args.verbose:
+        print()
+        print(f"Total unique product names discovered: {len(unique_product_names)}")
+        print("Showing the first 50 unique product names alphabetically:")
 
-    print_unique_product_names(unique_product_names[:50])
+        if unique_product_names:
+            print_unique_product_names(unique_product_names[:50])
+
     write_unique_product_names(unique_product_names)
 
     csv_file = write_advisories_to_csv(
