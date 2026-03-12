@@ -1,0 +1,88 @@
+products:
+
+  asa:
+    display_name: "ASA"
+    friendly_name: "Cisco Adaptive Security Appliance"
+    group: "netsec"
+    api_type: "asa"
+    classification_product: "ASA"
+    aliases:
+      - "asa"
+      - "adaptive-security-appliance"
+
+  ftd:
+    display_name: "FTD"
+    friendly_name: "Cisco Secure Firewall Threat Defense"
+    group: "netsec"
+    api_type: "ftd"
+    classification_product: "FTD"
+    aliases:
+      - "ftd"
+      - "firepower-threat-defense"
+      - "secure-firewall-threat-defense"
+      - "threat-defense"
+
+  fmc:
+    display_name: "FMC"
+    friendly_name: "Cisco Secure Firewall Management Center"
+    group: "netsec"
+    api_type: "fmc"
+    classification_product: "FMC"
+    aliases:
+      - "fmc"
+      - "firepower-management-center"
+      - "secure-firewall-management-center"
+
+  fxos:
+    display_name: "FXOS"
+    friendly_name: "Cisco Firepower Extensible Operating System"
+    group: "netsec"
+    api_type: "fxos"
+    classification_product: "FXOS"
+    aliases:
+      - "fxos"
+      - "firepower-extensible-operating-system"
+
+  ios:
+    display_name: "IOS"
+    friendly_name: "Cisco IOS Software"
+    group: "enterprise"
+    api_type: "ios"
+    classification_product: "IOS"
+    aliases:
+      - "ios"
+      - "cisco-ios"
+
+  iosxe:
+    display_name: "IOS XE"
+    friendly_name: "Cisco IOS XE Software"
+    group: "enterprise"
+    api_type: "iosxe"
+    classification_product: "IOS XE"
+    aliases:
+      - "iosxe"
+      - "ios-xe"
+      - "cisco-ios-xe"
+
+  nxos:
+    display_name: "NX-OS"
+    friendly_name: "Cisco NX-OS Software"
+    group: "datacenter"
+    api_type: "nxos"
+    classification_product: "NX-OS"
+    aliases:
+      - "nxos"
+      - "nx-os"
+      - "cisco-nx-os"
+
+  aci:
+    display_name: "NX-OS ACI Mode"
+    friendly_name: "Cisco NX-OS System Software in ACI Mode"
+    group: "datacenter"
+    api_type: "aci"
+    classification_product: "NX-OS ACI Mode"
+    aliases:
+      - "aci"
+      - "aci-mode"
+      - "nxos-aci"
+      - "nx-os-aci"
