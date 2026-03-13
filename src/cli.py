@@ -82,7 +82,7 @@ def parse_arguments(product_groups):
         type=str,
         help="End date in YYYY-MM-DD format",
     )
-    
+
     parser.add_argument(
         "--html",
         action="store_true",
@@ -95,7 +95,9 @@ def parse_arguments(product_groups):
         help="Enable verbose console logging for API requests and debugging output",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.environment_mode = bool(args.product)
+    return args
 
 
 def resolve_date_range(args):

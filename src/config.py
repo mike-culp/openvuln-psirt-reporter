@@ -9,14 +9,13 @@ BASE_URL = "https://apix.cisco.com/security/advisories/v2"
 ADVISORIES_URL = f"{BASE_URL}/all/lastpublished"
 ROOT_DIR = Path(__file__).resolve().parents[1]
 PRODUCT_GROUPS_FILE = ROOT_DIR / "config" / "product_groups.yaml"
+ENVIRONMENT_PRODUCTS_FILE = ROOT_DIR / "config" / "environment_products.yaml"
 OUTPUT_DIR = ROOT_DIR / "output"
 
 CLIENT_ID = os.getenv("OPENVULN_CLIENT_ID")
 CLIENT_SECRET = os.getenv("OPENVULN_CLIENT_SECRET")
 
 KEV_CATALOG_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
-
-ENVIRONMENT_PRODUCTS_FILE = "config/environment_products.yaml"
 
 
 def load_product_groups():
