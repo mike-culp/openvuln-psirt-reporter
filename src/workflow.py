@@ -34,6 +34,8 @@ from src.logging_utils import set_verbose, verbose_print
 def run():
     product_groups = load_product_groups()
     args = parse_arguments(product_groups)
+    print(f"environment_mode={args.environment_mode}")
+    print(f"product={args.product}")
     set_verbose(args.verbose)
 
     available_groups = set(product_groups.keys())
