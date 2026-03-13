@@ -33,26 +33,7 @@ def parse_arguments(product_groups):
         default=["all"],
         help=group_help_text,
     )
-
-    parser.add_argument(
-        "--days",
-        type=positive_int,
-        default=60,
-        help="Number of days to look back. Ignored if start/end date are provided.",
-    )
-
-    parser.add_argument(
-        "--start-date",
-        type=str,
-        help="Start date in YYYY-MM-DD format",
-    )
-
-    parser.add_argument(
-        "--end-date",
-        type=str,
-        help="End date in YYYY-MM-DD format",
-    )
-
+    
     parser.add_argument(
         "--product",
         nargs="+",
@@ -83,6 +64,25 @@ def parse_arguments(product_groups):
         help="Include only advisories with CVEs present in the CISA KEV catalog",
     )
 
+    parser.add_argument(
+        "--days",
+        type=positive_int,
+        default=60,
+        help="Number of days to look back. Ignored if start/end date are provided.",
+    )
+
+    parser.add_argument(
+        "--start-date",
+        type=str,
+        help="Start date in YYYY-MM-DD format",
+    )
+
+    parser.add_argument(
+        "--end-date",
+        type=str,
+        help="End date in YYYY-MM-DD format",
+    )
+    
     parser.add_argument(
         "--html",
         action="store_true",
