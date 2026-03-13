@@ -16,6 +16,8 @@ CLIENT_SECRET = os.getenv("OPENVULN_CLIENT_SECRET")
 
 KEV_CATALOG_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 
+ENVIRONMENT_PRODUCTS_FILE = "config/environment_products.yaml"
+
 
 def load_product_groups():
     """Load product group definitions from the YAML config file."""
@@ -23,3 +25,10 @@ def load_product_groups():
         config_data = yaml.safe_load(file_handle)
 
     return config_data["groups"]
+
+def load_environment_products():
+    """
+    Load environment-assessable products configuration.
+    """
+    data = load_yaml(ENVIRONMENT_PRODUCTS_FILE)
+    return data.get("products", {})
