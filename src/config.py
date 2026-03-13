@@ -26,9 +26,12 @@ def load_product_groups():
 
     return config_data["groups"]
 
+
 def load_environment_products():
     """
     Load environment-assessable products configuration.
     """
-    data = load_yaml(ENVIRONMENT_PRODUCTS_FILE)
+    with open(ENVIRONMENT_PRODUCTS_FILE, "r") as f:
+        data = yaml.safe_load(f)
+
     return data.get("products", {})

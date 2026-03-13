@@ -54,6 +54,14 @@ def parse_arguments(product_groups):
     )
 
     parser.add_argument(
+        "--product",
+        nargs="+",
+        action="append",
+        metavar=("PRODUCT", "VERSION"),
+        help="Specify product and version(s) for environment assessment mode"
+    )
+
+    parser.add_argument(
         "--sir",
         nargs="+",
         choices=["critical", "high", "medium", "low"],
