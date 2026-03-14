@@ -169,8 +169,6 @@ def fetch_advisories_for_os_version(os_type, version, platform_alias=None):
 
     query_params = {
         "version": version,
-        "productNames": "true",
-        "summaryDetails": "false",
         "pageIndex": 1,
         "pageSize": 100,
     }
