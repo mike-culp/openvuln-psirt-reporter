@@ -2,6 +2,7 @@ import requests
 
 from src.config import (
     ADVISORIES_URL,
+    BASE_URL,
     CLIENT_ID,
     CLIENT_SECRET,
     KEV_CATALOG_URL,
@@ -150,3 +151,71 @@ def is_kev_advisory(advisory, kev_cves):
         return False
 
     return any(cve in kev_cves for cve in advisory_cves)
+
+
+def fetch_advisories_for_os_version(os_type, version, platform_alias=None):
+    """
+    Fetch advisories for a specific OS type and version from OpenVuln.
+    """
+    print("Getting OpenVuln OAuth token...")
+    token = get_access_token()
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+    }
+
+    url = f"{BASE_URL}/OSType/{os_type}"
+
+    query_params = {
+        "version": version,
+        "productNames": "true",
+        "summaryDetails": "false",
+        "pageIndex": 1,
+        "pageSize": 100,
+    }
+
+    if platform_alias:
+        query_params["platformAlias"] = platform_alias
+
+    all_advisories = []
+    current_page = 1
+
+    print(f"Getting advisories for {os_type} {version}...")
+
+    while True:
+        query_params["pageIndex"] = current_page
+
+        response = requests.get(
+            url,
+            headers=headers,
+            params=query_params,
+            timeout=30,
+        )
+
+        verbose_print(
+            f"OpenVuln OSType status for {os_type} {version} "
+            f"page {current_page}: {response.status_code}"
+        )
+
+        if response.status_code == 404:
+            return []
+
+        if response.status_code != 200:
+            verbose_print("OSType response:")
+            verbose_print(response.text)
+
+        response.raise_for_status()
+
+        response_data = response.json()
+        paging_info = response_data.get("paging", {})
+        advisories = response_data.get("advisories", [])
+
+        all_advisories.extend(advisories)
+
+        if paging_info.get("next") == "NA":
+            break
+
+        current_page += 1
+
+    return all_advisories

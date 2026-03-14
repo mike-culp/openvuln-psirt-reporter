@@ -3,14 +3,13 @@ from datetime import datetime, timedelta, timezone
 from src.config import load_environment_products
 
 
-
 def positive_int(value):
-    """Argparse type that only accepts integers >= 1."""
+    """
+    Ensure CLI integer arguments are positive.
+    """
     ivalue = int(value)
-    if ivalue < 1:
-        raise argparse.ArgumentTypeError(
-            f"invalid positive integer value: {value}"
-        )
+    if ivalue <= 0:
+        raise argparse.ArgumentTypeError(f"{value} must be a positive integer")
     return ivalue
 
 
@@ -29,7 +28,7 @@ def parse_product_version_args(product_args):
 
     for entry in product_args or []:
         product = entry[0].strip().lower()
-        versions = entry[1:]
+        versions = [v.strip() for v in entry[1:] if str(v).strip()]
 
         if not versions:
             raise ValueError(
@@ -42,7 +41,10 @@ def parse_product_version_args(product_args):
                 f"Unsupported product '{product}'. Supported products: {valid}"
             )
 
-        parsed[product] = versions
+        if product in parsed:
+            parsed[product].extend(versions)
+        else:
+            parsed[product] = versions
 
     return parsed
 
@@ -159,3 +161,72 @@ def resolve_date_range(args):
         raise ValueError("--start-date must be on or before --end-date")
 
     return start_date, end_date
+
+
+def fetch_advisories_for_os_version(os_type, version, platform_alias=None):
+    """
+    Fetch advisories for a specific OS type and version from OpenVuln.
+    """
+    token = get_access_token()
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+    }
+
+    url = f"{BASE_URL}/OSType/{os_type}"
+
+    query_params = {
+        "version": version,
+        "productNames": "true",
+        "summaryDetails": "false",
+        "pageIndex": 1,
+        "pageSize": 100,
+    }
+
+    if platform_alias:
+        query_params["platformAlias"] = platform_alias
+
+    all_advisories = []
+    current_page = 1
+
+    while True:
+        query_params["pageIndex"] = current_page
+
+        response = requests.get(
+            url,
+            headers=headers,
+            params=query_params,
+            timeout=30,
+        )
+
+        verbose_print(
+            f"OpenVuln OSType status for {os_type} {version} page {current_page}: "
+            f"{response.status_code}"
+        )
+
+        if response.status_code == 404:
+            return []
+
+        if response.status_code != 200:
+            verbose_print("OSType response:")
+            verbose_print(response.text)
+
+        response.raise_for_status()
+
+        response_data = response.json()
+
+        if isinstance(response_data, dict) and "advisories" not in response_data:
+            return []
+
+        advisories = response_data.get("advisories", [])
+        paging_info = response_data.get("paging", {})
+
+        all_advisories.extend(advisories)
+
+        if paging_info.get("next") == "NA":
+            break
+
+        current_page += 1
+
+    return all_advisories
