@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from src.config import load_environment_products
 
 
+
 def positive_int(value):
     """Argparse type that only accepts integers >= 1."""
     ivalue = int(value)
@@ -43,7 +44,7 @@ def parse_product_version_args(product_args):
 
         parsed[product] = versions
 
-    return parsed
+        return parsed
 
 
 def parse_arguments(product_groups):
@@ -131,6 +132,7 @@ def parse_arguments(product_groups):
 
     args = parser.parse_args()
     args.environment_mode = bool(args.product)
+    args.product_versions = parse_product_version_args(args.product)
     return args
 
 

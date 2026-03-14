@@ -27,16 +27,18 @@ from src.reporting import (
     write_unique_product_names,
 )
 from src.bug_enrichment import enrich_advisories_with_bug_details
-from src.logging_utils import set_verbose
 from src.logging_utils import set_verbose, verbose_print
 
 
 def run():
     product_groups = load_product_groups()
     args = parse_arguments(product_groups)
-    print(f"environment_mode={args.environment_mode}")
-    print(f"product={args.product}")
     set_verbose(args.verbose)
+
+    if args.environment_mode:
+        print("Environment mode")
+        print(f"Requested product versions: {args.product_versions}")
+        sys.exit(0)
 
     available_groups = set(product_groups.keys())
 
