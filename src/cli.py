@@ -44,7 +44,7 @@ def parse_product_version_args(product_args):
 
         parsed[product] = versions
 
-        return parsed
+    return parsed
 
 
 def parse_arguments(product_groups):
