@@ -28,6 +28,7 @@ from src.reporting import (
 )
 from src.bug_enrichment import enrich_advisories_with_bug_details
 from src.logging_utils import set_verbose, verbose_print
+from src.environment import run_environment_assessment
 
 
 def run():
@@ -36,8 +37,7 @@ def run():
     set_verbose(args.verbose)
 
     if args.environment_mode:
-        print("Environment mode")
-        print(f"Requested product versions: {args.product_versions}")
+        run_environment_assessment(args.product_versions)
         sys.exit(0)
 
     available_groups = set(product_groups.keys())
