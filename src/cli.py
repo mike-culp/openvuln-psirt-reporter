@@ -1,5 +1,6 @@
 import argparse
 from datetime import datetime, timedelta, timezone
+from src.config import load_environment_products
 
 
 def positive_int(value):
@@ -10,6 +11,39 @@ def positive_int(value):
             f"invalid positive integer value: {value}"
         )
     return ivalue
+
+
+def parse_product_version_args(product_args):
+    """
+    Validate and normalize --product arguments.
+
+    Input from argparse looks like:
+        [["ftd", "7.2.2.1"]]
+
+    Output:
+        {"ftd": ["7.2.2.1"]}
+    """
+    supported_products = load_environment_products()
+    parsed = {}
+
+    for entry in product_args or []:
+        product = entry[0].strip().lower()
+        versions = entry[1:]
+
+        if not versions:
+            raise ValueError(
+                f"--product {product} requires at least one version"
+            )
+
+        if product not in supported_products:
+            valid = ", ".join(sorted(supported_products.keys()))
+            raise ValueError(
+                f"Unsupported product '{product}'. Supported products: {valid}"
+            )
+
+        parsed[product] = versions
+
+    return parsed
 
 
 def parse_arguments(product_groups):
