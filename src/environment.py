@@ -1,5 +1,6 @@
 from src.api import fetch_advisories_for_os_version
 from src.config import load_environment_products
+from src.bug_enrichment import enrich_advisories_with_bug_details
 
 
 def normalize_os_version_for_query(product, version):
@@ -16,22 +17,55 @@ def normalize_os_version_for_query(product, version):
     return version
 
 
-from src.api import fetch_advisories_for_os_version
-from src.config import load_environment_products
-
-
-def normalize_os_version_for_query(product, version):
+def get_release_train(product, version):
     """
-    Normalize user-supplied versions into API-friendly versions.
+    Return the release train for a queried version.
+
+    For FTD, 7.6.2 -> 7.6
     """
-    version = version.strip()
+    parts = str(version).split(".")
+    if product == "ftd" and len(parts) >= 2:
+        return ".".join(parts[:2])
+    return str(version)
 
-    if product == "ftd":
-        parts = version.split(".")
-        if len(parts) == 2:
-            return f"{version}.0"
 
-    return version
+def version_key(version):
+    """
+    Build a sortable key for dotted versions like 7.6.2 or 7.4.0.1.
+    """
+    key = []
+
+    for part in str(version).split("."):
+        part = part.strip()
+        if part.isdigit():
+            key.append(int(part))
+        else:
+            key.append(part)
+
+    return tuple(key)
+
+
+def pick_first_fixed_version(product, queried_version, fixed_versions):
+    """
+    Prefer the first fixed version in the same train as the queried version.
+    If no same-train fix exists, return None.
+    """
+    if not fixed_versions:
+        return None
+
+    queried_train = get_release_train(product, queried_version)
+
+    same_train = [
+        version for version in fixed_versions
+        if get_release_train(product, version) == queried_train
+    ]
+
+    if not same_train:
+        return None
+
+    candidates = sorted(set(same_train), key=version_key)
+    return candidates[0] if candidates else None
+
 
 
 def run_environment_assessment(product_versions):
@@ -99,19 +133,31 @@ def run_environment_assessment(product_versions):
     print(f"\nUnique advisories retrieved across all queries: {len(all_advisories)}")
 
     if all_advisories:
+
+        # Enrich advisories with Bug API data
+        all_advisories = enrich_advisories_with_bug_details(all_advisories)
+
         severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "": 4}
+
         sorted_advisories = sorted(
             all_advisories,
             key=lambda advisory: (
                 severity_order.get(str(advisory.get("sir", "")).strip().lower(), 5),
                 advisory.get("advisoryId", ""),
             ),
-        )
+    )
 
-        print("\nSample advisories:")
+        print("\nExample advisories (first 10):")
         for advisory in sorted_advisories[:10]:
+            first_fixed = pick_first_fixed_version(
+                advisory.get("_matched_product", ""),
+                advisory.get("_matched_version", ""),
+                advisory.get("fixed_versions", []),
+            )
+
             print(
                 f"- {advisory.get('advisoryId', 'unknown')} | "
                 f"{advisory.get('sir', '')} | "
+                f"First fixed: {first_fixed or 'unknown'} | "
                 f"{advisory.get('advisoryTitle', '')}"
             )
