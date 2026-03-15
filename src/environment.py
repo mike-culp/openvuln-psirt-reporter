@@ -45,6 +45,77 @@ def version_key(version):
     return tuple(key)
 
 
+def normalize_version_parts(version):
+    """
+    Convert a dotted version string into a tuple of integers.
+
+    Examples:
+        7.6.2 -> (7, 6, 2)
+        7.6.2.1 -> (7, 6, 2, 1)
+        7.4 -> (7, 4)
+    """
+    parts = []
+
+    for part in str(version).split("."):
+        part = part.strip()
+
+        if not part:
+            continue
+
+        if not part.isdigit():
+            return None
+
+        parts.append(int(part))
+
+    return tuple(parts) if parts else None
+
+
+def compare_versions(left, right):
+    """
+    Compare dotted versions numerically.
+
+    Returns:
+        -1 if left < right
+         0 if left == right
+         1 if left > right
+        None if either version is not purely numeric
+    """
+    left_parts = normalize_version_parts(left)
+    right_parts = normalize_version_parts(right)
+
+    if left_parts is None or right_parts is None:
+        return None
+
+    max_len = max(len(left_parts), len(right_parts))
+    left_parts = left_parts + (0,) * (max_len - len(left_parts))
+    right_parts = right_parts + (0,) * (max_len - len(right_parts))
+
+    if left_parts < right_parts:
+        return -1
+    if left_parts > right_parts:
+        return 1
+    return 0
+
+
+def is_version_affected(product, queried_version, affected_versions):
+    """
+    Return True if the queried version exactly matches one of the
+    advisory's affected versions.
+
+    Initial behavior:
+    - exact dotted-version match
+    - missing trailing zeros are treated as equal
+    """
+    if not affected_versions:
+        return False
+
+    for affected_version in affected_versions:
+        if compare_versions(queried_version, affected_version) == 0:
+            return True
+
+    return False
+
+
 def pick_first_fixed_version(product, queried_version, fixed_versions):
     """
     Prefer the first fixed version in the same train as the queried version.
@@ -65,7 +136,6 @@ def pick_first_fixed_version(product, queried_version, fixed_versions):
 
     candidates = sorted(set(same_train), key=version_key)
     return candidates[0] if candidates else None
-
 
 
 def run_environment_assessment(product_versions):
@@ -93,6 +163,9 @@ def run_environment_assessment(product_versions):
             advisories = fetch_advisories_for_os_version(api_type, query_version)
             print(f"    Advisories returned: {len(advisories)}")
 
+            advisories = enrich_advisories_with_bug_details(advisories)
+
+            validated_advisories = []
             severity_counts = {
                 "critical": 0,
                 "high": 0,
@@ -101,22 +174,32 @@ def run_environment_assessment(product_versions):
             }
 
             for advisory in advisories:
-                sir = str(advisory.get("sir", "")).strip().lower()
-                if sir in severity_counts:
-                    severity_counts[sir] += 1
+                advisory["_matched_product"] = product
+                advisory["_matched_version"] = query_version
+
+                if is_version_affected(
+                    product,
+                    query_version,
+                    advisory.get("affected_versions", []),
+                ):
+                    validated_advisories.append(advisory)
+
+                    sir = str(advisory.get("sir", "")).strip().lower()
+                    if sir in severity_counts:
+                        severity_counts[sir] += 1
 
                 advisory_id = advisory.get("advisoryId")
-                if advisory_id and advisory_id not in seen_advisory_ids:
-                    seen_advisory_ids.add(advisory_id)
-                    advisory["_matched_product"] = product
-                    advisory["_matched_version"] = query_version
+                advisory_key = (advisory_id, query_version)
+
+                if advisory_id and advisory_key not in seen_advisory_ids:
+                    seen_advisory_ids.add(advisory_key)
                     all_advisories.append(advisory)
 
             version_summaries.append(
                 {
                     "product": display_name,
                     "version": query_version,
-                    "count": len(advisories),
+                    "count": len(validated_advisories),
                     "severity_counts": severity_counts,
                 }
             )
@@ -130,12 +213,22 @@ def run_environment_assessment(product_versions):
         print(f"Medium: {summary['severity_counts']['medium']}")
         print(f"Low: {summary['severity_counts']['low']}")
 
-    print(f"\nUnique advisories retrieved across all queries: {len(all_advisories)}")
+    print(f"\nTotal advisory matches across all queried versions: {len(all_advisories)}")
 
     if all_advisories:
 
-        # Enrich advisories with Bug API data
-        all_advisories = enrich_advisories_with_bug_details(all_advisories)
+        validated_advisories = []
+
+        for advisory in all_advisories:
+            matched_product = advisory.get("_matched_product", "")
+            matched_version = advisory.get("_matched_version", "")
+
+            if is_version_affected(
+                matched_product,
+                matched_version,
+                advisory.get("affected_versions", []),
+            ):
+                validated_advisories.append(advisory)
 
         severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "": 4}
 
@@ -149,15 +242,29 @@ def run_environment_assessment(product_versions):
 
         print("\nExample advisories (first 10):")
         for advisory in sorted_advisories[:10]:
-            first_fixed = pick_first_fixed_version(
-                advisory.get("_matched_product", ""),
-                advisory.get("_matched_version", ""),
-                advisory.get("fixed_versions", []),
+            matched_product = advisory.get("_matched_product", "")
+            matched_version = advisory.get("_matched_version", "")
+            affected_versions = advisory.get("affected_versions", [])
+            fixed_versions = advisory.get("fixed_versions", [])
+
+            validated_affected = is_version_affected(
+                matched_product,
+                matched_version,
+                affected_versions,
             )
+
+            first_fixed = None
+            if validated_affected:
+                first_fixed = pick_first_fixed_version(
+                    matched_product,
+                    matched_version,
+                    fixed_versions,
+                )
 
             print(
                 f"- {advisory.get('advisoryId', 'unknown')} | "
                 f"{advisory.get('sir', '')} | "
-                f"First fixed: {first_fixed or 'unknown'} | "
+                f"Affected: {'Yes' if validated_affected else 'No'} | "
+                f"First fixed: {first_fixed or 'n/a'} | "
                 f"{advisory.get('advisoryTitle', '')}"
             )
