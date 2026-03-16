@@ -197,6 +197,103 @@ python -m src.main \
 
 ---
 
+## Environment Assessment Mode (Version-Aware Analysis)
+
+The PSIRT Reporter supports **environment assessment mode**, allowing users to determine whether specific Cisco software versions are affected by known vulnerabilities.
+
+When a product and version are supplied, the tool:
+
+1. Queries the Cisco OpenVuln API for advisories related to the platform
+2. Enriches advisories using the Cisco Bug API
+3. Extracts affected and fixed software versions
+4. Validates whether the queried version is actually affected
+5. Identifies the first fixed version within the same release train
+
+This enables targeted vulnerability analysis for deployed Cisco platforms.
+
+Typical use cases include:
+
+- Determining if a deployed firewall version is vulnerable
+- Identifying upgrade targets during patch planning
+- Rapid environment assessment during incident response
+- Generating upgrade guidance for operations teams
+
+---
+
+### Running Environment Assessment Mode
+
+Environment mode is activated when the `--product` argument is used.
+
+Syntax:
+
+--product <product> <version>
+
+Example:
+
+python -m src.main --product ftd 7.6.2
+
+Multiple versions can be evaluated in a single run:
+
+python -m src.main --product ftd 7.4.2 7.6.2
+
+Example console output:
+
+Environment mode
+
+Checking product: ftd
+  Querying version: 7.6.2 -> 7.6.2
+
+Version summary:
+
+FTD 7.6.2
+Advisories affecting this version: 3
+Critical: 1
+High: 1
+Medium: 1
+Low: 0
+
+---
+
+### Version Validation Logic
+
+OpenVuln queries often return advisories affecting entire release trains, which can include versions that are not actually vulnerable.
+
+To avoid false positives, the tool validates advisories using numeric version comparison.
+
+Behavior includes:
+
+- dotted version comparison (7.6.2 == 7.6.2.0)
+- normalization of queried versions for API queries
+- validation against Bug API affected version lists
+- identification of the first fixed version in the same release train
+
+Example:
+
+Advisory: cisco-sa-asaftd-webvpn-YROOTUW
+
+Queried version: 7.6.2  
+Affected versions: 7.6.2.1
+
+Result:  
+Not affected
+
+This prevents OpenVuln query results from incorrectly marking safe versions as vulnerable.
+
+---
+
+### Example Advisory Output
+
+- cisco-sa-asaftd-webvpn-YROOTUW | critical | Affected: Yes | First fixed: 7.6.2.1
+
+| Field | Description |
+|------|-------------|
+| Advisory | Cisco PSIRT advisory ID |
+| Severity | Cisco Security Impact Rating |
+| Affected | Whether the queried version is affected |
+| First Fixed | First fixed version in the same release train |
+
+---
+
 # Overview
 
 Cisco publishes security advisories through the OpenVuln API. These advisories often include many products and versions, making it difficult to quickly determine relevance.
