@@ -593,38 +593,16 @@ New features are developed in `dev` and merged into `main` when stable.
 
 # Roadmap
 
-Future development will focus on improving advisory intelligence, vulnerability prioritization, and operational reporting.
+## v1.5 – Reporting Improvements
+• improved CSV output
+• enhanced HTML reporting
+• severity color indicators
 
----
+## v1.6 – Guided Product Integration
+• detect new Cisco product names
+• assist with classification rule updates
 
-## v2.1 – Version-Aware Vulnerability Analysis
-
-Planned capabilities:
-
-* filter advisories by specific Cisco software versions
-* determine whether a given version is affected or fixed
-* enable targeted vulnerability analysis for deployed platforms
-
-Example concept:
-
-```
---product ftd 7.2.2.1
-```
-
----
-
-## v2.2 – Guided Product Integration
-
-Detect new Cisco product names returned by the API and guide users through safely adding them to classification rules.
-
----
-
-## v3 – Reporting and Visualization Improvements
-
-Planned enhancements include:
-
-* color-coded severity indicators
-* KEV highlighting
-* severity distribution charts
-* advisory counts by product group
-* improved HTML report dashboards
+## v2 – Advanced Reporting & Visualization
+• advisory dashboards
+• severity distribution charts
+• KEV prioritization views
