@@ -1,3 +1,4 @@
+# Environment-mode products currently validated (NetSec PoC)
 products:
 
   asa:
@@ -43,46 +44,47 @@ products:
       - "fxos"
       - "firepower-extensible-operating-system"
 
-  ios:
-    display_name: "IOS"
-    friendly_name: "Cisco IOS Software"
-    group: "enterprise"
-    api_type: "ios"
-    classification_product: "IOS"
-    aliases:
-      - "ios"
-      - "cisco-ios"
+# Future support (product-profiles branch)
+#  ios:
+#    display_name: "IOS"
+#    friendly_name: "Cisco IOS Software"
+#    group: "enterprise"
+#    api_type: "ios"
+#    classification_product: "IOS"
+#    aliases:
+#      - "ios"
+#      - "cisco-ios"
 
-  iosxe:
-    display_name: "IOS XE"
-    friendly_name: "Cisco IOS XE Software"
-    group: "enterprise"
-    api_type: "iosxe"
-    classification_product: "IOS XE"
-    aliases:
-      - "iosxe"
-      - "ios-xe"
-      - "cisco-ios-xe"
+#  iosxe:
+#    display_name: "IOS XE"
+#    friendly_name: "Cisco IOS XE Software"
+#    group: "enterprise"
+#    api_type: "iosxe"
+#    classification_product: "IOS XE"
+#    aliases:
+#      - "iosxe"
+#      - "ios-xe"
+#      - "cisco-ios-xe"
 
-  nxos:
-    display_name: "NX-OS"
-    friendly_name: "Cisco NX-OS Software"
-    group: "datacenter"
-    api_type: "nxos"
-    classification_product: "NX-OS"
-    aliases:
-      - "nxos"
-      - "nx-os"
-      - "cisco-nx-os"
+#  nxos:
+#    display_name: "NX-OS"
+#    friendly_name: "Cisco NX-OS Software"
+#    group: "datacenter"
+#    api_type: "nxos"
+#    classification_product: "NX-OS"
+#    aliases:
+#      - "nxos"
+#      - "nx-os"
+#      - "cisco-nx-os"
 
-  aci:
-    display_name: "NX-OS ACI Mode"
-    friendly_name: "Cisco NX-OS System Software in ACI Mode"
-    group: "datacenter"
-    api_type: "aci"
-    classification_product: "NX-OS ACI Mode"
-    aliases:
-      - "aci"
-      - "aci-mode"
-      - "nxos-aci"
-      - "nx-os-aci"
+  #aci:
+  #  display_name: "NX-OS ACI Mode"
+  #  friendly_name: "Cisco NX-OS System Software in ACI Mode"
+  #  group: "datacenter"
+  #  api_type: "aci"
+  #  classification_product: "NX-OS ACI Mode"
+  #  aliases:
+  #    - "aci"
+  #    - "aci-mode"
+  #    - "nxos-aci"
+  #    - "nx-os-aci"

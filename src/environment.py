@@ -21,11 +21,15 @@ def get_release_train(product, version):
     """
     Return the release train for a queried version.
 
-    For FTD, 7.6.2 -> 7.6
+    Current generic behavior:
+    - dotted numeric versions use major.minor as the train
+    - if the version cannot be parsed numerically, fall back to the raw string
     """
-    parts = str(version).split(".")
-    if product == "ftd" and len(parts) >= 2:
-        return ".".join(parts[:2])
+    parts = normalize_version_parts(version)
+
+    if parts and len(parts) >= 2:
+        return f"{parts[0]}.{parts[1]}"
+
     return str(version)
 
 
@@ -118,8 +122,8 @@ def is_version_affected(product, queried_version, affected_versions):
 
 def pick_first_fixed_version(product, queried_version, fixed_versions):
     """
-    Prefer the first fixed version in the same train as the queried version.
-    If no same-train fix exists, return None.
+    Prefer the earliest fixed version in the same train that is
+    greater than or equal to the queried version.
     """
     if not fixed_versions:
         return None
@@ -134,8 +138,18 @@ def pick_first_fixed_version(product, queried_version, fixed_versions):
     if not same_train:
         return None
 
-    candidates = sorted(set(same_train), key=version_key)
-    return candidates[0] if candidates else None
+    candidates = []
+
+    for version in same_train:
+        comparison = compare_versions(version, queried_version)
+        if comparison is not None and comparison >= 0:
+            candidates.append(version)
+
+    if not candidates:
+        return None
+
+    candidates = sorted(set(candidates), key=version_key)
+    return candidates[0]
 
 
 def run_environment_assessment(product_versions):
