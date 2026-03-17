@@ -150,25 +150,25 @@ def write_advisories_to_csv(advisories, selected_groups, start_date, end_date, k
     )
 
     fieldnames = [
-    "matched_groups",
-    "friendly_products",
-    "kev",
-    "firstPublished",
-    "lastUpdated",
-    "status",
-    "advisoryId",
-    "sir",
-    "cvssBaseScore",
-    "cves",
-    "bugIDs",
-    "bugStatuses",
-    "bugSeverities",
-    "affectedVersions",
-    "fixedVersions",
-    "advisoryTitle",
-    "productNames",
-    "publicationUrl",
-    "cwe",
+        "matched_groups",
+        "friendly_products",
+        "kev",
+        "firstPublished",
+        "lastUpdated",
+        "status",
+        "advisoryId",
+        "sir",
+        "cvssBaseScore",
+        "cves",
+        "bugIDs",
+        "bugStatuses",
+        "bugSeverities",
+        "affectedVersions",
+        "fixedVersions",
+        "advisoryTitle",
+        "productNames",
+        "publicationUrl",
+        "cwe",
 ]
 
     with open(output_file, "w", newline="", encoding="utf-8") as file_handle:
@@ -240,38 +240,6 @@ def write_advisories_to_csv(advisories, selected_groups, start_date, end_date, k
                 fixed_versions_value = ", ".join(fixed_versions)
             else:
                 fixed_versions_value = str(fixed_versions)
-
-            # --- BUG ENRICHMENT VALUES (add here) ---
-            bug_ids = advisory.get("bugIDs_normalized", [])
-            if isinstance(bug_ids, list):
-                bug_ids_value = ", ".join(bug_ids)
-            else:
-                bug_ids_value = str(bug_ids)
-
-            bug_statuses = advisory.get("bug_statuses", [])
-            if isinstance(bug_statuses, list):
-                bug_statuses_value = ", ".join(bug_statuses)
-            else:
-                bug_statuses_value = str(bug_statuses)
-
-            bug_severities = advisory.get("bug_severities", [])
-            if isinstance(bug_severities, list):
-                bug_severities_value = ", ".join(bug_severities)
-            else:
-                bug_severities_value = str(bug_severities)
-
-            affected_versions = advisory.get("affected_versions", [])
-            if isinstance(affected_versions, list):
-                affected_versions_value = ", ".join(affected_versions)
-            else:
-                affected_versions_value = str(affected_versions)
-
-            fixed_versions = advisory.get("fixed_versions", [])
-            if isinstance(fixed_versions, list):
-                fixed_versions_value = ", ".join(fixed_versions)
-            else:
-                fixed_versions_value = str(fixed_versions)
-            # --- END BUG ENRICHMENT VALUES ---
 
             row = {
                 "matched_groups": matched_groups_value,

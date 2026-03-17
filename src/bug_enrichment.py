@@ -12,11 +12,8 @@ Initial scope:
 """
 
 from __future__ import annotations
-
 from typing import Any, Dict, Iterable, List
-
-from src.bug_api import BugApiError, fetch_bug_details_by_ids, verbose_print
-
+from src.bug_api import BugApiError, fetch_bug_details_by_ids
 from src.logging_utils import verbose_print
 
 
@@ -130,11 +127,6 @@ def enrich_advisories_with_bug_details(
         bug_lookup = fetch_bug_details_by_ids(unique_bug_ids)
         verbose_print(f"Bug API details retrieved for: {len(bug_lookup)} bug IDs")
 
-        # DEBUG
-        verbose_print("DEBUG bug_lookup sample:")
-        sample_items = list(bug_lookup.items())[:5]
-        for key, value in sample_items:
-            verbose_print(key, value)
 
         for advisory in advisories:
             advisory_bug_ids = normalize_bug_ids(advisory.get("bugIDs"))
@@ -145,8 +137,6 @@ def enrich_advisories_with_bug_details(
                 if bug_id in bug_lookup
             ]
 
-            verbose_print("DEBUG advisory bug IDs:", advisory_bug_ids)
-            verbose_print("DEBUG matched bug records:", bug_records)
 
             advisory["bugIDs_normalized"] = advisory_bug_ids
             advisory["bug_details"] = bug_records

@@ -271,12 +271,6 @@ def fetch_bug_details_batch(
     payload = response.json()
     rows = extract_bug_rows(payload)
 
-    if rows:
-        verbose_print()
-        verbose_print("DEBUG: First Bug API record:")
-        verbose_print(rows[0])
-        verbose_print()
-
     normalized: Dict[str, Dict[str, Any]] = {}
     for row in rows:
         bug = normalize_bug_record(row)

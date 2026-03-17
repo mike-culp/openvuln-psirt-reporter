@@ -52,6 +52,20 @@ def run():
             )
             sys.exit(1)
 
+    try:
+        start_date, end_date = resolve_date_range(args)
+
+        if args.min_cvss is not None and not 0.0 <= args.min_cvss <= 10.0:
+            print(
+                f"Error: Invalid --min-cvss value: {args.min_cvss}. "
+                "CVSS scores must be between 0.0 and 10.0."
+            )
+            sys.exit(1)
+
+    except ValueError as error:
+        print(f"Error: {error}")
+        sys.exit(1)
+
     start_date, end_date = resolve_date_range(args)
 
     if args.min_cvss is not None:

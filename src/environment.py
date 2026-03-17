@@ -252,7 +252,7 @@ def run_environment_assessment(product_versions):
                 severity_order.get(str(advisory.get("sir", "")).strip().lower(), 5),
                 advisory.get("advisoryId", ""),
             ),
-    )
+        )
 
         print("\nExample advisories (first 10):")
         for advisory in sorted_advisories[:10]:
