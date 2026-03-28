@@ -375,42 +375,47 @@ def write_advisories_to_html(advisories, selected_groups, start_date, end_date, 
         reverse=True,
     )
 
-    total_count = len(advisories)
+    rows = build_report_rows(advisories, kev_cves, selected_groups)
+
+    total_count = len(rows)
     kev_count = 0
     sir_counts = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
     unique_cves = set()
     group_counts = {}
     product_counts = {}
 
-    for advisory in advisories:
-        cves = normalize_cves(advisory.get("cves"))
-
-        if any(cve in kev_cves for cve in cves):
+    # Summary aggregation
+    for row in rows:
+        if row.get("kev") == "Y":
             kev_count += 1
 
-        sir = (advisory.get("sir") or "").strip().title()
+        sir = str(row.get("sir", "")).strip().title()
         if sir in sir_counts:
             sir_counts[sir] += 1
 
+        cves = [
+            cve.strip()
+            for cve in str(row.get("cves", "")).split(",")
+            if cve.strip()
+        ]
         for cve in cves:
-            if cve:
-                unique_cves.add(cve)
+            unique_cves.add(cve)
 
-        matched_groups = advisory.get("matched_groups", []) or []
-        if isinstance(matched_groups, str):
-            matched_groups = [matched_groups]
-
+        matched_groups = [
+            group.strip()
+            for group in str(row.get("matched_groups", "")).split(",")
+            if group.strip()
+        ]
         for group in matched_groups:
-            if group:
-                group_counts[group] = group_counts.get(group, 0) + 1
+            group_counts[group] = group_counts.get(group, 0) + 1
 
-        friendly_products = advisory.get("friendly_products", []) or []
-        if isinstance(friendly_products, str):
-            friendly_products = [friendly_products]
-
+        friendly_products = [
+            product.strip()
+            for product in str(row.get("friendly_products", "")).split(",")
+            if product.strip()
+        ]
         for product in friendly_products:
-            if product:
-                product_counts[product] = product_counts.get(product, 0) + 1
+            product_counts[product] = product_counts.get(product, 0) + 1
 
     summary_cards_html = f"""
     <div class="summary-grid">
@@ -442,33 +447,21 @@ def write_advisories_to_html(advisories, selected_groups, start_date, end_date, 
     if not product_rows:
         product_rows = "<tr><td colspan='2'>No product data</td></tr>"
 
+    # Advisory table rendering
     advisory_rows = ""
-    for advisory in advisories:
-        advisory_id = advisory.get("advisoryId", "")
-        title = advisory.get("advisoryTitle", "")
-        sir = advisory.get("sir", "")
-        cvss = advisory.get("cvssBaseScore", "")
-        status = advisory.get("status", "")
-        first_published = advisory.get("firstPublished", "")
-        last_updated = advisory.get("lastUpdated", "")
-        publication_url = advisory.get("publicationUrl", "")
-
-        cves = normalize_cves(advisory.get("cves"))
-        cves_display = ", ".join(cves)
-
-        matched_groups = advisory.get("matched_groups", []) or []
-        if isinstance(matched_groups, list):
-            matched_groups_display = ", ".join(matched_groups)
-        else:
-            matched_groups_display = str(matched_groups)
-
-        friendly_products = advisory.get("friendly_products", []) or []
-        if isinstance(friendly_products, list):
-            friendly_products_display = ", ".join(friendly_products)
-        else:
-            friendly_products_display = str(friendly_products)
-
-        kev_flag = "Yes" if is_kev_advisory(advisory, kev_cves) else "No"
+    for row in rows:
+        advisory_id = row.get("advisoryId", "")
+        title = row.get("advisoryTitle", "")
+        sir = row.get("sir", "")
+        cvss = row.get("cvssBaseScore", "")
+        status = row.get("status", "")
+        first_published = row.get("firstPublished", "")
+        last_updated = row.get("lastUpdated", "")
+        publication_url = row.get("publicationUrl", "")
+        cves_display = row.get("cves", "")
+        matched_groups_display = row.get("matched_groups", "")
+        friendly_products_display = row.get("friendly_products", "")
+        kev_flag = "Yes" if row.get("kev") == "Y" else "No"
 
         advisory_id_escaped = html.escape(str(advisory_id))
         if publication_url:
@@ -480,20 +473,20 @@ def write_advisories_to_html(advisories, selected_groups, start_date, end_date, 
             advisory_link = advisory_id_escaped
 
         advisory_rows += f"""
-        <tr>
-            <td>{advisory_link}</td>
-            <td>{html.escape(str(title))}</td>
-            <td>{html.escape(str(sir))}</td>
-            <td>{html.escape(str(cvss))}</td>
-            <td>{kev_flag}</td>
-            <td>{html.escape(str(matched_groups_display))}</td>
-            <td>{html.escape(str(friendly_products_display))}</td>
-            <td>{html.escape(str(cves_display))}</td>
-            <td>{html.escape(str(first_published))}</td>
-            <td>{html.escape(str(last_updated))}</td>
-            <td>{html.escape(str(status))}</td>
-        </tr>
-        """
+    <tr>
+        <td>{advisory_link}</td>
+        <td>{html.escape(str(title))}</td>
+        <td>{html.escape(str(sir))}</td>
+        <td>{html.escape(str(cvss))}</td>
+        <td>{kev_flag}</td>
+        <td>{html.escape(str(matched_groups_display))}</td>
+        <td>{html.escape(str(friendly_products_display))}</td>
+        <td>{html.escape(str(cves_display))}</td>
+        <td>{html.escape(str(first_published))}</td>
+        <td>{html.escape(str(last_updated))}</td>
+        <td>{html.escape(str(status))}</td>
+    </tr>
+    """
 
     if not advisory_rows:
         advisory_rows = "<tr><td colspan='11'>No advisories found</td></tr>"
