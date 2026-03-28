@@ -4,6 +4,175 @@ from datetime import datetime, timezone
 from src.api import is_kev_advisory, normalize_cves
 from src.classification import classify_advisory_products
 from src.config import OUTPUT_DIR
+from src.environment import is_version_affected, pick_first_fixed_version
+
+
+def stringify_list(value):
+    """
+    Normalize strings/lists/None into a comma-separated string.
+    """
+    if value is None:
+        return ""
+
+    if isinstance(value, list):
+        return ", ".join(str(item).strip() for item in value if str(item).strip())
+
+    cleaned = str(value).strip()
+    return cleaned
+
+
+def normalize_selected_groups(selected_groups):
+    """
+    Normalize selected groups for report display filtering.
+    """
+    if not selected_groups:
+        return set()
+
+    return {str(group).strip().lower() for group in selected_groups}
+
+
+def filter_display_groups(matched_groups, selected_groups):
+    """
+    Limit displayed matched groups to the groups selected for this report.
+    """
+    if not matched_groups:
+        return []
+
+    normalized_selected = normalize_selected_groups(selected_groups)
+
+    if "all" in normalized_selected:
+        return matched_groups
+
+    return [
+        group for group in matched_groups
+        if str(group).strip().lower() in normalized_selected
+    ]
+
+
+def filter_display_products(advisory, display_groups):
+    """
+    Limit displayed friendly products to those that belong to the
+    groups selected for this report.
+    """
+    if not display_groups:
+        return []
+
+    friendly_products = advisory.get("friendly_products", []) or []
+    if isinstance(friendly_products, str):
+        friendly_products = [friendly_products]
+
+    matched_groups = advisory.get("matched_groups", []) or []
+    if isinstance(matched_groups, str):
+        matched_groups = [matched_groups]
+
+    if not friendly_products or not matched_groups:
+        return []
+
+    display_group_set = {str(group).strip().lower() for group in display_groups}
+    matched_group_set = {str(group).strip().lower() for group in matched_groups}
+
+    if not matched_group_set.intersection(display_group_set):
+        return []
+
+    product_to_group = {
+        "ASA": "netsec",
+        "FTD": "netsec",
+        "FMC": "netsec",
+        "FXOS": "netsec",
+        "IOS": "enterprise",
+        "IOS XE": "enterprise",
+    }
+
+    filtered = []
+    for product in friendly_products:
+        group = product_to_group.get(str(product).strip())
+        if group in display_group_set:
+            filtered.append(product)
+
+    return filtered
+
+
+def build_report_rows(advisories, kev_cves, selected_groups):
+    """
+    Normalize advisories into a stable reporting row model.
+
+    Standard mode:
+        one row per advisory
+
+    Environment mode:
+        one row per advisory + queried version context
+        using _matched_product / _matched_version when present
+    """
+    rows = []
+
+    for advisory in advisories:
+        display_groups = filter_display_groups(
+            advisory.get("matched_groups", []),
+            selected_groups,
+        )
+
+        display_products = filter_display_products(
+            advisory,
+            display_groups,
+)
+        matched_product = advisory.get("_matched_product")
+        matched_version = advisory.get("_matched_version")
+
+        affected_versions = advisory.get("affected_versions", []) or []
+        fixed_versions = advisory.get("fixed_versions", []) or []
+
+        is_environment_row = bool(matched_product and matched_version)
+
+        affected = ""
+        first_fixed = ""
+
+        if is_environment_row:
+            affected_bool = is_version_affected(
+                matched_product,
+                matched_version,
+                affected_versions,
+            )
+            affected = "Yes" if affected_bool else "No"
+
+            if affected_bool:
+                first_fixed_value = pick_first_fixed_version(
+                    matched_product,
+                    matched_version,
+                    fixed_versions,
+                )
+                first_fixed = first_fixed_value or "n/a"
+            else:
+                first_fixed = "n/a"
+
+        row = {
+            "product": matched_product or "",
+            "version": matched_version or "",
+            "matched_groups": stringify_list(display_groups),
+            "friendly_products": stringify_list(display_products),
+            "kev": "Y" if is_kev_advisory(advisory, kev_cves) else "N",
+            "affected": affected,
+            "first_fixed": first_fixed,
+            "firstPublished": advisory.get("firstPublished", ""),
+            "lastUpdated": advisory.get("lastUpdated", ""),
+            "status": advisory.get("status", ""),
+            "advisoryId": advisory.get("advisoryId", ""),
+            "sir": advisory.get("sir", ""),
+            "cvssBaseScore": advisory.get("cvssBaseScore", ""),
+            "cves": stringify_list(normalize_cves(advisory.get("cves"))),
+            "cwe": stringify_list(advisory.get("cwe")),
+            "bugIDs": stringify_list(advisory.get("bugIDs_normalized", [])),
+            "bugStatuses": stringify_list(advisory.get("bug_statuses", [])),
+            "bugSeverities": stringify_list(advisory.get("bug_severities", [])),
+            "affectedVersions": stringify_list(affected_versions),
+            "fixedVersions": stringify_list(fixed_versions),
+            "advisoryTitle": advisory.get("advisoryTitle", ""),
+            "productNames": stringify_list(display_products),
+            "publicationUrl": advisory.get("publicationUrl", ""),
+        }
+
+        rows.append(row)
+
+    return rows
 
 
 def extract_unique_raw_product_names(advisories):
@@ -149,155 +318,40 @@ def write_advisories_to_csv(advisories, selected_groups, start_date, end_date, k
         reverse=True,
     )
 
+    rows = build_report_rows(advisories, kev_cves, selected_groups)
+
     fieldnames = [
-    "matched_groups",
-    "friendly_products",
-    "kev",
-    "firstPublished",
-    "lastUpdated",
-    "status",
-    "advisoryId",
-    "sir",
-    "cvssBaseScore",
-    "cves",
-    "bugIDs",
-    "bugStatuses",
-    "bugSeverities",
-    "affectedVersions",
-    "fixedVersions",
-    "advisoryTitle",
-    "productNames",
-    "publicationUrl",
-    "cwe",
-]
+        "product",
+        "version",
+        "matched_groups",
+        "friendly_products",
+        "kev",
+        "affected",
+        "first_fixed",
+        "firstPublished",
+        "lastUpdated",
+        "status",
+        "advisoryId",
+        "sir",
+        "cvssBaseScore",
+        "cves",
+        "cwe",
+        "bugIDs",
+        "bugStatuses",
+        "bugSeverities",
+        "affectedVersions",
+        "fixedVersions",
+        "advisoryTitle",
+        "productNames",
+        "publicationUrl",
+    ]
 
     with open(output_file, "w", newline="", encoding="utf-8") as file_handle:
         writer = csv.DictWriter(file_handle, fieldnames=fieldnames)
         writer.writeheader()
 
-        for advisory in advisories:
-            product_names = advisory.get("productNames", [])
-            if isinstance(product_names, list):
-                product_names_value = ", ".join(product_names)
-            else:
-                product_names_value = str(product_names)
-
-            matched_groups = advisory.get("matched_groups", [])
-            matched_groups_value = ", ".join(matched_groups)
-
-            friendly_products = advisory.get("friendly_products", [])
-            friendly_products_value = ", ".join(friendly_products)
-
-            cves = advisory.get("cves", [])
-            if isinstance(cves, list):
-                cves_value = ", ".join(cves)
-            else:
-                cves_value = str(cves)
-
-            cwe = advisory.get("cwe", [])
-            if isinstance(cwe, list):
-                cwe_value = ", ".join(cwe)
-            else:
-                cwe_value = str(cwe)
-
-            kev_value = "Y" if is_kev_advisory(advisory, kev_cves) else "N"
-
-            advisory_id = advisory.get("advisoryId", "")
-            advisory_title = advisory.get("advisoryTitle", "")
-            first_published = advisory.get("firstPublished", "")
-            last_updated = advisory.get("lastUpdated", "")
-            status = advisory.get("status", "")
-            sir = advisory.get("sir", "")
-            cvss_base_score = advisory.get("cvssBaseScore", "")
-            publication_url = advisory.get("publicationUrl", "")
-
-            bug_ids = advisory.get("bugIDs_normalized", [])
-            if isinstance(bug_ids, list):
-                bug_ids_value = ", ".join(bug_ids)
-            else:
-                bug_ids_value = str(bug_ids)
-
-            bug_statuses = advisory.get("bug_statuses", [])
-            if isinstance(bug_statuses, list):
-                bug_statuses_value = ", ".join(bug_statuses)
-            else:
-                bug_statuses_value = str(bug_statuses)
-
-            bug_severities = advisory.get("bug_severities", [])
-            if isinstance(bug_severities, list):
-                bug_severities_value = ", ".join(bug_severities)
-            else:
-                bug_severities_value = str(bug_severities)
-
-            affected_versions = advisory.get("affected_versions", [])
-            if isinstance(affected_versions, list):
-                affected_versions_value = ", ".join(affected_versions)
-            else:
-                affected_versions_value = str(affected_versions)
-
-            fixed_versions = advisory.get("fixed_versions", [])
-            if isinstance(fixed_versions, list):
-                fixed_versions_value = ", ".join(fixed_versions)
-            else:
-                fixed_versions_value = str(fixed_versions)
-
-            # --- BUG ENRICHMENT VALUES (add here) ---
-            bug_ids = advisory.get("bugIDs_normalized", [])
-            if isinstance(bug_ids, list):
-                bug_ids_value = ", ".join(bug_ids)
-            else:
-                bug_ids_value = str(bug_ids)
-
-            bug_statuses = advisory.get("bug_statuses", [])
-            if isinstance(bug_statuses, list):
-                bug_statuses_value = ", ".join(bug_statuses)
-            else:
-                bug_statuses_value = str(bug_statuses)
-
-            bug_severities = advisory.get("bug_severities", [])
-            if isinstance(bug_severities, list):
-                bug_severities_value = ", ".join(bug_severities)
-            else:
-                bug_severities_value = str(bug_severities)
-
-            affected_versions = advisory.get("affected_versions", [])
-            if isinstance(affected_versions, list):
-                affected_versions_value = ", ".join(affected_versions)
-            else:
-                affected_versions_value = str(affected_versions)
-
-            fixed_versions = advisory.get("fixed_versions", [])
-            if isinstance(fixed_versions, list):
-                fixed_versions_value = ", ".join(fixed_versions)
-            else:
-                fixed_versions_value = str(fixed_versions)
-            # --- END BUG ENRICHMENT VALUES ---
-
-            row = {
-                "matched_groups": matched_groups_value,
-                "friendly_products": friendly_products_value,
-                "kev": kev_value,
-                "firstPublished": advisory.get("firstPublished", ""),
-                "lastUpdated": advisory.get("lastUpdated", ""),
-                "status": advisory.get("status", ""),
-                "advisoryId": advisory.get("advisoryId", ""),
-                "sir": advisory.get("sir", ""),
-                "cvssBaseScore": advisory.get("cvssBaseScore", ""),
-                "cves": cves_value,
-                "advisoryTitle": advisory.get("advisoryTitle", ""),
-                "productNames": product_names_value,
-                "publicationUrl": advisory.get("publicationUrl", ""),
-                "bugIDs": bug_ids_value,
-                "bugStatuses": bug_statuses_value,
-                "bugSeverities": bug_severities_value,
-                "affectedVersions": affected_versions_value,
-                "fixedVersions": fixed_versions_value,
-                "advisoryTitle": advisory_title,
-                "productNames": product_names_value,
-                "publicationUrl": publication_url,
-                "cwe": cwe_value,
-            }
-
+        for row in rows:
+            
             writer.writerow(row)
 
     return output_file
